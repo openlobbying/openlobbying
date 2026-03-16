@@ -2,11 +2,6 @@ name: "Data source"
 description: Data source to be added to OpenLobbying
 body:
   - type: input
-    id: name
-    attributes:
-      label: Dataset name
-      description: What is the data source called?
-  - type: input
     id: publisher
     attributes:
       label: Publisher
