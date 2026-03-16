@@ -1,0 +1,23 @@
+name: "Data source"
+description: Data source to be added to OpenLobbying
+body:
+  - type: input
+    id: name
+    attributes:
+      label: Dataset name
+      description: What is the data source called?
+  - type: input
+    id: publisher
+    attributes:
+      label: Publisher
+      description: Who publishes this data?
+  - type: input
+    id: url
+    attributes:
+      label: URL
+      description: Where can this data be found?
+  - type: textarea
+    id: details
+    attributes:
+      label: Details
+      description: Additional details
