@@ -14,6 +14,11 @@ from pydantic import BaseModel
 from sqlalchemy import case, distinct, func, select, text
 
 from muckrake.logging import configure_logging
+from muckrake.search import (
+    get_actor_schema_counts,
+    list_actor_sitemap_entries,
+    search_entities as run_entity_search,
+)
 from muckrake.dedupe import (
     DedupeLockError,
     get_lock_engine,
@@ -314,81 +319,6 @@ def ensure_admin_dedupe_schema() -> None:
 def current_view():
     return get_view()
 
-POSTGRES_SEARCH_SQL = text(
-    """
-    WITH q AS (
-        SELECT
-            :query AS raw,
-            websearch_to_tsquery('simple', unaccent(:query)) AS tsq
-    )
-    SELECT
-        es.id,
-        COALESCE(es.display_name, es.id) AS name,
-        es.schema AS type,
-        similarity(COALESCE(es.display_name, ''), q.raw) AS sim_display,
-        word_similarity(q.raw, COALESCE(es.names_text, '')) AS sim_word
-    FROM entity_search AS es
-    CROSS JOIN q
-    WHERE
-        (
-            (q.tsq != ''::tsquery AND es.tsv @@ q.tsq)
-            OR similarity(COALESCE(es.display_name, ''), q.raw) > :similarity
-            OR word_similarity(q.raw, COALESCE(es.names_text, '')) > :word_similarity
-            OR COALESCE(es.names_text, '') ILIKE ('%' || q.raw || '%')
-        )
-        AND es.schema = ANY(:schemas)
-    ORDER BY
-        (lower(COALESCE(es.display_name, '')) = lower(q.raw)) DESC,
-        (COALESCE(es.display_name, '') ILIKE (q.raw || '%')) DESC,
-        ts_rank_cd(es.tsv, q.tsq) DESC,
-        GREATEST(
-            similarity(COALESCE(es.display_name, ''), q.raw),
-            word_similarity(q.raw, COALESCE(es.names_text, ''))
-        ) DESC,
-        length(COALESCE(es.display_name, es.id)) ASC
-    LIMIT :limit OFFSET :offset
-    """
-)
-
-POSTGRES_SEARCH_COUNT_SQL = text(
-    """
-    WITH q AS (
-        SELECT
-            :query AS raw,
-            websearch_to_tsquery('simple', unaccent(:query)) AS tsq
-    )
-    SELECT COUNT(*) AS total
-    FROM entity_search AS es
-    CROSS JOIN q
-    WHERE
-        (
-            (q.tsq != ''::tsquery AND es.tsv @@ q.tsq)
-            OR similarity(COALESCE(es.display_name, ''), q.raw) > :similarity
-            OR word_similarity(q.raw, COALESCE(es.names_text, '')) > :word_similarity
-            OR COALESCE(es.names_text, '') ILIKE ('%' || q.raw || '%')
-        )
-        AND es.schema = ANY(:schemas)
-    """
-)
-
-ACTOR_SITEMAP_IDS_SQL = text(
-    """
-    SELECT id
-    FROM entity_search
-    WHERE schema = ANY(:schemas)
-    ORDER BY id
-    LIMIT :limit OFFSET :offset
-    """
-)
-
-ACTOR_SITEMAP_COUNT_SQL = text(
-    """
-    SELECT COUNT(*) AS total
-    FROM entity_search
-    WHERE schema = ANY(:schemas)
-    """
-)
-
 
 STATS_CACHE_TTL_SECONDS = 600
 _stats_cache: Dict[str, Any] = {"expires_at": 0.0, "value": None}
@@ -512,21 +442,6 @@ def _get_top_actor_rankings(limit: int = 10) -> Dict[str, List[Dict[str, Any]]]:
             "top_lobbying_companies": [],
             "top_organizations": [],
         }
-
-
-@lru_cache(maxsize=1)
-def postgres_search_ready() -> bool:
-    """Check if production search materialized view is available."""
-    try:
-        engine = get_published_engine()
-        with engine.connect() as conn:
-            relation = conn.execute(
-                text("SELECT to_regclass('public.entity_search')")
-            ).scalar()
-            return relation is not None
-    except Exception as exc:
-        log.warning("Could not verify Postgres search objects: %s", exc)
-        return False
 
 
 def _search_response(
@@ -816,6 +731,7 @@ def list_profile_sitemap_entries(
     limit = max(1, min(limit, 50000))
     offset = max(0, offset)
 
+    view = current_view()
     if not view:
         return {
             "results": [],
@@ -825,70 +741,14 @@ def list_profile_sitemap_entries(
             "has_next": False,
         }
 
-    if postgres_search_ready():
-        try:
-            engine = get_published_engine()
-            with engine.connect() as conn:
-                total = conn.execute(
-                    ACTOR_SITEMAP_COUNT_SQL,
-                    {"schemas": sorted(ACTOR_SCHEMATA)},
-                ).scalar()
-                rows = conn.execute(
-                    ACTOR_SITEMAP_IDS_SQL,
-                    {
-                        "schemas": sorted(ACTOR_SCHEMATA),
-                        "limit": limit,
-                        "offset": offset,
-                    },
-                )
-                results = [
-                    {
-                        "id": str(row._mapping["id"]),
-                        "path": f"/profile/{row._mapping['id']}",
-                    }
-                    for row in rows
-                ]
-            total = int(total or 0)
-            return {
-                "results": results,
-                "total": total,
-                "offset": offset,
-                "limit": limit,
-                "has_next": (offset + len(results)) < total,
-            }
-        except Exception as exc:
-            log.exception(
-                "Profile sitemap query failed, falling back to Python scan: %s", exc
-            )
-
-    include_schema = []
-    for schema_name in sorted(ACTOR_SCHEMATA):
-        schema_obj = model.get(schema_name)
-        if schema_obj is not None:
-            include_schema.append(schema_obj)
-
-    results = []
-    seen_ids = set()
-    total = 0
-    for ent in view.entities(include_schemata=include_schema):
-        if ent.id in seen_ids:
-            continue
-
-        seen_ids.add(ent.id)
-        total += 1
-        if total <= offset:
-            continue
-        if len(results) >= limit:
-            continue
-
-        results.append({"id": ent.id, "path": f"/profile/{ent.id}"})
+    response = list_actor_sitemap_entries(sorted(ACTOR_SCHEMATA), limit, offset)
 
     return {
-        "results": results,
-        "total": total,
-        "offset": offset,
-        "limit": limit,
-        "has_next": (offset + len(results)) < total,
+        "results": response.results,
+        "total": response.total,
+        "offset": response.offset,
+        "limit": response.limit,
+        "has_next": response.has_next,
     }
 
 
@@ -924,67 +784,15 @@ def search_entities(
     if not query:
         return _search_response([], 0, offset, limit, requested_schema, schema_filter)
 
-    if postgres_search_ready():
-        try:
-            engine = get_published_engine()
-            with engine.connect() as conn:
-                total = conn.execute(
-                    POSTGRES_SEARCH_COUNT_SQL,
-                    {
-                        "query": query,
-                        "similarity": 0.25,
-                        "word_similarity": 0.55,
-                        "schemas": schema_filter,
-                    },
-                ).scalar()
-                rows = conn.execute(
-                    POSTGRES_SEARCH_SQL,
-                    {
-                        "query": query,
-                        "limit": limit,
-                        "offset": offset,
-                        "similarity": 0.25,
-                        "word_similarity": 0.55,
-                        "schemas": schema_filter,
-                    },
-                )
-                results = []
-                for row in rows:
-                    item = dict(row._mapping)
-                    item.pop("sim_display", None)
-                    item.pop("sim_word", None)
-                    results.append(item)
-            total = int(total or 0)
-            return _search_response(
-                results, total, offset, limit, requested_schema, schema_filter
-            )
-        except Exception as exc:
-            log.exception(
-                "Postgres search failed, falling back to Python scan: %s", exc
-            )
-
-    matched = []
-    seen_ids = set()
-    query_lower = query.lower()
-
-    include_schema = []
-    for schema_name in schema_filter:
-        schema_obj = model.get(schema_name)
-        if schema_obj is not None:
-            include_schema.append(schema_obj)
-
-    for ent in view.entities(include_schemata=include_schema):
-        if ent.id in seen_ids:
-            continue
-        if query_lower in ent.caption.lower():
-            matched.append({"id": ent.id, "name": ent.caption, "type": ent.schema.name})
-            seen_ids.add(ent.id)
-
-    total = len(matched)
-    results = matched[offset : offset + limit]
+    response = run_entity_search(query, schema_filter, limit, offset)
 
     return _search_response(
-        results, total, offset, limit, requested_schema, schema_filter
+        response.results,
+        response.total,
+        response.offset,
+        response.limit,
+        requested_schema,
+        schema_filter,
     )
 
 
@@ -1010,41 +818,7 @@ def get_stats() -> Dict[str, Any]:
         _stats_cache["expires_at"] = now + STATS_CACHE_TTL_SECONDS
         return empty
 
-    schema_counts: Dict[str, int] = {schema: 0 for schema in ACTOR_SCHEMATA}
-
-    if postgres_search_ready():
-        try:
-            engine = get_published_engine()
-            with engine.connect() as conn:
-                rows = conn.execute(
-                    text(
-                        """
-                        SELECT schema, COUNT(*)::bigint AS count
-                        FROM entity_search
-                        WHERE schema = ANY(:schemas)
-                        GROUP BY schema
-                        """
-                    ),
-                    {"schemas": sorted(ACTOR_SCHEMATA)},
-                )
-                for row in rows:
-                    schema_name = str(row._mapping["schema"])
-                    schema_counts[schema_name] = int(row._mapping["count"])
-        except Exception as exc:
-            log.exception(
-                "Postgres stats query failed, falling back to Python scan: %s", exc
-            )
-
-    if sum(schema_counts.values()) == 0:
-        include_schema = []
-        for schema_name in sorted(ACTOR_SCHEMATA):
-            schema_obj = model.get(schema_name)
-            if schema_obj is not None:
-                include_schema.append(schema_obj)
-        for ent in view.entities(include_schemata=include_schema):
-            schema_name = ent.schema.name
-            if schema_name in schema_counts:
-                schema_counts[schema_name] += 1
+    schema_counts = get_actor_schema_counts(sorted(ACTOR_SCHEMATA))
 
     organizations = (
         schema_counts.get("Organization", 0)

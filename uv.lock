@@ -978,7 +978,7 @@ wheels = [
 [[package]]
 name = "muckrake"
 version = "0.1.0"
-source = { directory = "../muckrake" }
+source = { editable = "../muckrake" }
 dependencies = [
     { name = "beautifulsoup4" },
     { name = "click" },
@@ -1205,7 +1205,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "fastapi", specifier = ">=0.127.0" },
-    { name = "muckrake", directory = "../muckrake" },
+    { name = "muckrake", editable = "../muckrake" },
     { name = "uvicorn", specifier = ">=0.40.0" },
 ]
 
