@@ -1,0 +1,17 @@
+[Unit]
+Description=OpenLobbying FastAPI service
+After=network.target postgresql.service
+Wants=postgresql.service
+
+[Service]
+Type=simple
+User=deploy
+Group=deploy
+WorkingDirectory=/home/deploy/openlobbying
+EnvironmentFile=/etc/openlobbying/app.env
+ExecStart=/home/deploy/openlobbying/.venv/bin/uv run openlobbying server --host 127.0.0.1 --port 8000
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

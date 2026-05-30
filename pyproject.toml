@@ -1,0 +1,24 @@
+[project]
+name = "openlobbying"
+version = "0.1.0"
+description = "OpenLobbying application built on top of muckrake."
+readme = "README.md"
+authors = [
+    { name = "Nicu Calcea", email = "mail@nicu.md" }
+]
+requires-python = ">=3.13"
+dependencies = [
+    "fastapi>=0.127.0",
+    "muckrake",
+    "uvicorn>=0.40.0",
+]
+
+[project.scripts]
+openlobbying = "openlobbying.cli:cli"
+
+[build-system]
+requires = ["uv_build>=0.9.17,<0.10.0"]
+build-backend = "uv_build"
+
+[tool.uv.sources]
+muckrake = { path = "../muckrake" }
