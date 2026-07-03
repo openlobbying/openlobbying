@@ -28,3 +28,6 @@ __pycache__/
 .pytest_cache/
 .ruff_cache/
 *.pyc
+
+# muckrake data workspace (fetch cache, artifacts, SQLite default store)
+/data
