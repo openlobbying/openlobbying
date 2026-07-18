@@ -1,0 +1,30 @@
+Gift:
+  label: "Gift"
+  plural: "Gifts"
+  description: >
+    A gift given to or by a government official, as published in transparency
+    releases and registers of interests.
+  extends:
+    - Payment
+    - Thing
+  matchable: false
+  featured:
+    - payer
+    - beneficiary
+    - date
+    - amount
+  caption:
+    - name
+    - summary
+    - amount
+  properties:
+    location:
+      label: "Location"
+      type: address
+    involved:
+      label: "Involved"
+      type: entity
+      range: LegalEntity
+      reverse:
+        name: giftsInvolved
+        label: "Gifts (involved)"
