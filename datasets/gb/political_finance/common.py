@@ -1,7 +1,59 @@
 """Common entity creation functions for Electoral Commission data."""
+import csv
+from functools import reduce
+from pathlib import Path
 from typing import Optional
 
+from followthemoney import model
+from followthemoney.exc import InvalidData
+
 from muckrake.utils import normalize_gb_coh
+
+
+def donor_schema_for_status(donor_status: Optional[str]) -> str:
+    if donor_status == 'Individual':
+        return 'Person'
+    if donor_status in ('Company', 'Limited Liability Partnership'):
+        return 'Company'
+    if donor_status in ('Registered Political Party', 'Unincorporated Association',
+                        'Trade Union', 'Trust', 'Friendly Society'):
+        return 'Organization'
+    if donor_status == 'Public Fund':
+        return 'PublicBody'
+    return 'LegalEntity'
+
+
+def donor_schema_overrides(sources: list[tuple[Path, str, str]]) -> dict[str, str]:
+    """Map donor ids whose rows imply FtM-incompatible schemata to LegalEntity.
+
+    The EC registers sometimes type the same donor inconsistently across rows
+    (e.g. a company recorded as "Individual" on some donations). Emitting both
+    Person and Organization statements under one entity id poisons the store —
+    assembly crashes stages later with "No common schema" (openlobbying#30).
+    Pre-scan the CSVs and, where the mapped schemata cannot merge, fall back
+    to their common ancestor. Sources are (path, id_field, status_field).
+    """
+    schemata_by_donor: dict[str, set[str]] = {}
+    for path, id_field, status_field in sources:
+        with open(path, "r", encoding="utf-8-sig") as fh:
+            for row in csv.DictReader(fh):
+                donor_id = row.get(id_field)
+                if not donor_id:
+                    continue
+                schema = donor_schema_for_status(row.get(status_field))
+                schemata_by_donor.setdefault(donor_id, set()).add(schema)
+
+    overrides: dict[str, str] = {}
+    for donor_id, names in schemata_by_donor.items():
+        if len(names) < 2:
+            continue
+        schemata = [model.get(name) for name in sorted(names)]
+        try:
+            reduce(model.common_schema, schemata)
+        except InvalidData:
+            overrides[donor_id] = "LegalEntity"
+    return overrides
+
 
 def make_donor(
     dataset,
@@ -10,7 +62,8 @@ def make_donor(
     donor_status: Optional[str],
     donor_reg_nr: Optional[str],
     donor_postcode: Optional[str],
-    register_name: Optional[str]
+    register_name: Optional[str],
+    schema_override: Optional[str] = None,
 ):
     """Create a donor/lender entity with proper schema and properties."""
     # Apply manual corrections from datapatch lookups
@@ -19,16 +72,7 @@ def make_donor(
         if result is not None:
             donor_reg_nr = result.value
     
-    donor_schema = 'LegalEntity'
-    if donor_status == 'Individual':
-        donor_schema = 'Person'
-    elif donor_status in ('Company', 'Limited Liability Partnership'):
-        donor_schema = 'Company'
-    elif donor_status in ('Registered Political Party', 'Unincorporated Association', 
-                          'Trade Union', 'Trust', 'Friendly Society'):
-        donor_schema = 'Organization'
-    elif donor_status == 'Public Fund':
-        donor_schema = 'PublicBody'
+    donor_schema = schema_override or donor_schema_for_status(donor_status)
 
     donor = dataset.make(donor_schema)
     # donor.id = dataset.make_id('donor', donor_id or donor_name)
