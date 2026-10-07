@@ -1,0 +1,19 @@
+Donation:
+  label: "Donation"
+  plural: "Donations"
+  description: >
+    A political donation or regulated loan — to a party, campaigner or
+    member — as published by the Electoral Commission and registers of
+    interests.
+  extends:
+    - Payment
+    - Thing
+  matchable: false
+  featured:
+    - payer
+    - beneficiary
+    - date
+    - amount
+  caption:
+    - amount
+    - summary
