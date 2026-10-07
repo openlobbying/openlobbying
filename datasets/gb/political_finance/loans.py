@@ -15,8 +15,8 @@ def build_url(base, params):
     return f"{base}?{urlencode(parts)}"
 
 
-def crawl_loans(dataset):
-    """Crawl political loans from the Electoral Commission."""
+def fetch_loans(dataset):
+    """Fetch the Electoral Commission loans CSV; returns its path."""
     BASE_URL = "https://search.electoralcommission.org.uk/api/csv/Loans"
     PARAMS = {
         "query": "",
@@ -38,8 +38,11 @@ def crawl_loans(dataset):
 
     dataset.log.info(f"Crawling loans with params: {PARAMS}")
     url = build_url(BASE_URL, PARAMS)
-    path = dataset.fetch_resource("loans.csv", url)
+    return dataset.fetch_resource("loans.csv", url)
 
+
+def process_loans(dataset, path, schema_overrides):
+    """Emit entities from a fetched loans CSV."""
     with open(path, "r", encoding="utf-8-sig") as fh:
         reader = csv.DictReader(fh)
 
@@ -81,6 +84,7 @@ def crawl_loans(dataset):
                 lender_reg_nr,
                 lender_postcode,
                 register_name,
+                schema_override=schema_overrides.get(lender_id),
             )
             dataset.emit(lender)
 

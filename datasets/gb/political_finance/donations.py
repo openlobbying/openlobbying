@@ -15,8 +15,8 @@ def build_url(base, params):
     return f"{base}?{urlencode(parts)}"
 
 
-def crawl_donations(dataset):
-    """Crawl political donations from the Electoral Commission."""
+def fetch_donations(dataset):
+    """Fetch the Electoral Commission donations CSV; returns its path."""
     BASE_URL = "https://search.electoralcommission.org.uk/api/csv/Donations"
     PARAMS = {
         "query": "",
@@ -51,8 +51,11 @@ def crawl_donations(dataset):
 
     dataset.log.info(f"Crawling donations with params: {PARAMS}")
     url = build_url(BASE_URL, PARAMS)
-    path = dataset.fetch_resource("donations.csv", url)
+    return dataset.fetch_resource("donations.csv", url)
 
+
+def process_donations(dataset, path, schema_overrides):
+    """Emit entities from a fetched donations CSV."""
     with open(path, "r", encoding="utf-8-sig") as fh:
         reader = csv.DictReader(fh)
 
@@ -89,6 +92,7 @@ def crawl_donations(dataset):
                 donor_reg_nr,
                 donor_postcode,
                 register_name,
+                schema_override=schema_overrides.get(donor_id),
             )
             dataset.emit(donor)
 
