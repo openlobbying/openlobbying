@@ -157,6 +157,14 @@ def is_probably_csv_bytes(data: bytes, chunk_size: int = 4096) -> bool:
         delimiter = getattr(dialect, "delimiter", None)
         if delimiter is not None and any(delimiter in line for line in lines[:3]):
             return True
+        return False
+
+    # The Sniffer's heuristics change between Python patch releases (3.13.16 gives
+    # up on CSVs that 3.13.11 sniffs); fall back to a consistent column count.
+    for delimiter in ",;\t|":
+        widths = {len(row) for row in csv.reader(lines[:10], delimiter=delimiter)}
+        if len(widths) == 1 and widths.pop() > 1:
+            return True
     return False
 
 

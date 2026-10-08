@@ -1,0 +1,73 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [develop, main]
+  push:
+    branches: [develop, main]
+
+jobs:
+  python:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+        with:
+          path: openlobbying
+
+      # muckrake is an editable path dependency (../muckrake); test against the
+      # muckrake branch matching this one's target (develop or main).
+      - name: Check out muckrake
+        uses: actions/checkout@v5
+        with:
+          repository: openlobbying/muckrake
+          ref: ${{ github.base_ref || github.ref_name }}
+          path: muckrake
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+
+      # plyvel (LevelDB) and pyicu (ICU) are sdist-only and compile from source.
+      - name: Install system dependencies
+        run: sudo apt-get update && sudo apt-get install -y libleveldb-dev libicu-dev pkg-config
+
+      # --locked fails if uv.lock has drifted from pyproject.toml.
+      - name: Install dependencies
+        working-directory: openlobbying
+        run: uv sync --locked
+
+      - name: Test
+        working-directory: openlobbying
+        run: uv run pytest
+
+  frontend:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+
+      - name: Set up Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type check
+        run: npm run check
+
+      # The auth module requires these at import time; the build never connects.
+      - name: Build
+        run: npm run build
+        env:
+          MUCKRAKE_DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
+          BETTER_AUTH_SECRET: ci-build-only

@@ -15,7 +15,7 @@ NormalisedSheet = MODULE.NormalisedSheet
 detect_file_format = MODULE.detect_file_format
 normalise = MODULE.normalise
 
-RESOURCE_ROOT = Path("data/datasets/gb_gov_transparency/resources")
+RESOURCE_ROOT = Path(__file__).parent / "fixtures" / "gov_transparency"
 
 
 def load_fixture(relative_path: str) -> bytes:

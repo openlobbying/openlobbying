@@ -1,37 +1,29 @@
 Hospitality:
   label: "Hospitality"
   plural: "Hospitality"
-  description: >
-    Hospitality given to or received by a government official — receptions,
-    dinners, tickets — as published in transparency releases.
+  description: "A hospitality benefit, often involving attendance at an event and sometimes an associated monetary value."
   extends:
+    - Payment
     - Event
-    - Value
   matchable: false
-  featured:
-    - name
-    - date
-    - organizer
-    - beneficiary
   caption:
-    - name
-    - summary
+    - purpose
+    - amount
     - date
-  properties:
-    purpose:
-      label: "Purpose"
-      type: text
-    payer:
-      label: "Payer"
-      type: entity
-      range: LegalEntity
-      reverse:
-        name: hospitalityPaid
-        label: "Hospitality paid for"
-    beneficiary:
-      label: "Beneficiary"
-      type: entity
-      range: LegalEntity
-      reverse:
-        name: hospitalityReceived
-        label: "Hospitality received"
+  featured:
+    - purpose
+    - date
+    - amount
+    - payer
+    - beneficiary
+    - organizer
+    - involved
+  edge:
+    source: payer
+    label: "provided hospitality to"
+    target: beneficiary
+    directed: true
+    caption:
+      - amount
+      - date
+      - purpose
