@@ -52,7 +52,8 @@ parse_period = MODULE.parse_period
 
 class DummyDataset:
     def __init__(self, tmp_path):
-        self._data = {"collections": ["example-collection"], "fail_on_unknown": False}
+        self._data = {"collections": ["example-collection"]}
+        self.failed_units = []
         self.prefix = "gb-gov"
         self.emitted = []
         self.data_path = tmp_path
@@ -95,6 +96,14 @@ class DummyDataset:
 
     def emit(self, entity):
         self.emitted.append(entity)
+
+    def run_unit(self, key, func, *args, **kwargs):
+        try:
+            func(*args, **kwargs)
+        except Exception as exc:
+            self.failed_units.append((key, str(exc)))
+            return False
+        return True
 
 
 def test_parse_period_parses_common_quarter_title():
@@ -202,9 +211,15 @@ def test_crawl_reports_unknown_fingerprint(tmp_path):
 
     assert "UNKNOWN FINGERPRINT" in dataset.output.getvalue()
     assert (tmp_path / "trace" / "manifest.jsonl").exists()
+    # An unknown layout fails its source's unit; the crawl itself carries on.
+    [(key, error)] = dataset.failed_units
+    assert key == attachment_url
+    assert error.startswith("UNKNOWN FINGERPRINT")
 
 
-def test_crawl_incremental_manifest_skips_unchanged_sources(tmp_path):
+def test_crawl_reprocesses_every_source_and_writes_no_manifest(tmp_path):
+    # Regression for openlobbying#40: a second crawl must not skip sources the first
+    # one processed, or its pack (a full snapshot) would silently drop them.
     collection_url = MODULE.make_content_api_url("example-collection")
     publication_url = MODULE.make_content_api_url("/government/publications/example-publication")
     attachment_url = "https://assets.publishing.service.gov.uk/example.csv"
@@ -255,12 +270,10 @@ def test_crawl_incremental_manifest_skips_unchanged_sources(tmp_path):
     finally:
         MODULE.load_schema = original_load_schema
 
-    manifest_path = tmp_path / "incremental-manifest.json"
-    assert manifest_path.exists()
-    payload = json.loads(manifest_path.read_text())
-    assert attachment_url in payload["sources"]
-    assert payload["sources"][attachment_url]["status"] == "processed"
-    assert not second.emitted
+    assert not (tmp_path / "incremental-manifest.json").exists()
+    assert first.emitted
+    assert len(second.emitted) == len(first.emitted)
+    assert not second.failed_units
 
 
 def test_next_unknown_follows_crawler_collection_order(tmp_path, monkeypatch, capsys):

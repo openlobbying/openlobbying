@@ -27,3 +27,7 @@ An important property is `topics`, which is used for categorisation. For example
 Once you've added all the properties, you can emit the entity with `dataset.emit(entity)`.
 
 Avoid ambiguity at all costs. If you can't be sure about something when creating an entity, crash loudly rather than guessing or falling back to a potentially incorrect value.
+
+## Units of work
+
+Long crawlers over many independent sources (files, pages, records) should wrap each one in `dataset.run_unit(key, func, *args)`, with a stable key such as the source URL. If `func` raises, only that unit fails: nothing it emitted is written, the run finishes as `partial` with the failures counted by error type, and `uv run muckrake crawl <dataset> --retry-failed` re-runs the failed units (and resumes a crawl that crashed) without redoing the rest. Crashing loudly still applies inside a unit: raise rather than guess, and the unit is skipped and reported. See `datasets/gb/gov_transparency/crawler.py`.
