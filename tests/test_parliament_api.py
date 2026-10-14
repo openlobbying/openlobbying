@@ -48,3 +48,16 @@ def test_iter_api_items_does_not_mutate_params():
     params = {"skip": 0, "take": 3}
     list(UTIL.iter_api_items(PagedDataset(list(range(4)), total=4), URL, params))
     assert params == {"skip": 0, "take": 3}
+
+
+class IdDataset:
+    def make_id(self, *parts, reg_nr=None, register=None):
+        return "-".join(str(p) for p in (*parts, reg_nr, register) if p)
+
+
+def test_person_and_organization_with_same_name_get_different_ids():
+    ds = IdDataset()
+    person = UTIL.legal_entity_id(ds, "Person", "Results UK")
+    org = UTIL.legal_entity_id(ds, "Organization", "Results UK")
+    assert person != org
+    assert org == UTIL.legal_entity_id(ds, "LegalEntity", "Results UK")

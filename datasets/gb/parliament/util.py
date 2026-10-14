@@ -248,6 +248,20 @@ def make_mp(dataset, member_data):
     return member
 
 
+def legal_entity_id(dataset, schema, name, reg_nr=None, register=None):
+    """ID for a named party: an org-id when a registration number is given.
+
+    People get their own namespace: the register sometimes files the same
+    name as an individual in one entry and a company in another, and a
+    Person can't share an ID with an Organization.
+    """
+    if reg_nr and register:
+        return dataset.make_id("entity", name, reg_nr=reg_nr, register=register)
+    if schema == "Person":
+        return dataset.make_id("person", name)
+    return dataset.make_id("entity", name)
+
+
 def make_legal_entity(
     dataset,
     name,
@@ -272,12 +286,7 @@ def make_legal_entity(
         return None
 
     entity = dataset.make(schema)
-
-    # Use structured org-id if registration number is provided
-    if reg_nr and register:
-        entity.id = dataset.make_id("entity", name, reg_nr=reg_nr, register=register)
-    else:
-        entity.id = dataset.make_id("entity", name)
+    entity.id = legal_entity_id(dataset, schema, name, reg_nr, register)
 
     entity.add("name", name)
 

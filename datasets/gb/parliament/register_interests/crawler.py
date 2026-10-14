@@ -2,7 +2,7 @@ import re
 from typing import Dict, Optional, Any
 
 from muckrake.util import parse_date
-from ..util import iter_api_items, make_mp, make_legal_entity
+from ..util import iter_api_items, legal_entity_id, make_mp, make_legal_entity
 
 
 # Cache for parent interests: {interest_id: (fields_data, employer_entity)}
@@ -553,12 +553,7 @@ def process_gift_foreign(dataset, item: Dict[str, Any], member):
         # so we create it and then add country property separately
         donor = dataset.make(schema)
 
-        if reg_nr and register:
-            donor.id = dataset.make_id(
-                "entity", donor_name, reg_nr=reg_nr, register=register
-            )
-        else:
-            donor.id = dataset.make_id("entity", donor_name)
+        donor.id = legal_entity_id(dataset, schema, donor_name, reg_nr, register)
 
         donor.add("name", donor_name)
 
