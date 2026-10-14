@@ -2,7 +2,7 @@ import re
 from typing import Dict, Optional, Any
 
 from muckrake.util import parse_date
-from ..util import make_mp, make_legal_entity
+from ..util import iter_api_items, make_mp, make_legal_entity
 
 
 # Cache for parent interests: {interest_id: (fields_data, employer_entity)}
@@ -870,102 +870,85 @@ def crawl(dataset):
         "Skip": 0,
     }
 
-    while True:
-        dataset.log.info(f"Crawling interests with params: {PARAMS}")
-        data = dataset.fetch_json(BASE_URL, params=PARAMS, cache_days=7)
+    for item in iter_api_items(dataset, BASE_URL, PARAMS, skip_key="Skip", take_key="Take"):
+        item_id = item.get("id")
+        category_data = item.get("category")
+        if not category_data:
+            continue
 
-        if data is None:
-            break
+        category_id = category_data.get("id")
+        member_data = item.get("member")
 
-        items = data.get("items", [])
-        if not items:
-            break
+        # Create member entity
+        member = make_mp(dataset, member_data)
+        if not member:
+            continue
 
-        for item in items:
-            item_id = item.get("id")
-            category_data = item.get("category")
-            if not category_data:
-                continue
+        # Route to appropriate processor based on category
+        if category_id == 12:
+            # Employment and earnings (parent)
+            fields_data, employer = process_employment(dataset, item, member)
+            PARENT_CACHE[item_id] = (fields_data, employer)
 
-            category_id = category_data.get("id")
-            member_data = item.get("member")
+        elif category_id in [1, 2]:
+            # Employment payments (child of category 12)
+            parent_id = item.get("parentInterestId")
+            employer = None
+            if parent_id:
+                if parent_id in PARENT_CACHE:
+                    _, employer = PARENT_CACHE[parent_id]
+                else:
+                    # Fetch and cache parent details if missing from current crawl stream
+                    parent_item = fetch_interest(dataset, parent_id)
+                    if parent_item:
+                        p_member_data = parent_item.get("member")
+                        p_member = make_mp(dataset, p_member_data)
+                        p_fields, p_employer = process_employment(
+                            dataset, parent_item, p_member
+                        )
+                        PARENT_CACHE[parent_id] = (p_fields, p_employer)
+                        employer = p_employer
 
-            # Create member entity
-            member = make_mp(dataset, member_data)
-            if not member:
-                continue
+            process_payment(dataset, item, member, employer)
 
-            # Route to appropriate processor based on category
-            if category_id == 12:
-                # Employment and earnings (parent)
-                fields_data, employer = process_employment(dataset, item, member)
-                PARENT_CACHE[item_id] = (fields_data, employer)
+        elif category_id == 3:
+            # Donations and other support
+            process_donation(dataset, item, member)
 
-            elif category_id in [1, 2]:
-                # Employment payments (child of category 12)
-                parent_id = item.get("parentInterestId")
-                employer = None
-                if parent_id:
-                    if parent_id in PARENT_CACHE:
-                        _, employer = PARENT_CACHE[parent_id]
-                    else:
-                        # Fetch and cache parent details if missing from current crawl stream
-                        parent_item = fetch_interest(dataset, parent_id)
-                        if parent_item:
-                            p_member_data = parent_item.get("member")
-                            p_member = make_mp(dataset, p_member_data)
-                            p_fields, p_employer = process_employment(
-                                dataset, parent_item, p_member
-                            )
-                            PARENT_CACHE[parent_id] = (p_fields, p_employer)
-                            employer = p_employer
+        elif category_id == 4:
+            # Gifts from UK sources
+            process_gift_uk(dataset, item, member)
 
-                process_payment(dataset, item, member, employer)
+        elif category_id == 5:
+            # Visits outside the UK
+            process_visit(dataset, item, member)
 
-            elif category_id == 3:
-                # Donations and other support
-                process_donation(dataset, item, member)
+        elif category_id == 6:
+            # Gifts from outside the UK
+            process_gift_foreign(dataset, item, member)
 
-            elif category_id == 4:
-                # Gifts from UK sources
-                process_gift_uk(dataset, item, member)
+        elif category_id == 7:
+            # Land and property
+            process_property(dataset, item, member)
 
-            elif category_id == 5:
-                # Visits outside the UK
-                process_visit(dataset, item, member)
+        elif category_id == 8:
+            # Shareholdings
+            process_shareholding(dataset, item, member)
 
-            elif category_id == 6:
-                # Gifts from outside the UK
-                process_gift_foreign(dataset, item, member)
+        elif category_id == 9:
+            # Miscellaneous
+            process_miscellaneous(dataset, item, member)
 
-            elif category_id == 7:
-                # Land and property
-                process_property(dataset, item, member)
+        elif category_id == 10:
+            # Family members employed
+            process_family_employed(dataset, item, member)
 
-            elif category_id == 8:
-                # Shareholdings
-                process_shareholding(dataset, item, member)
+        elif category_id == 11:
+            # Family members engaged in lobbying
+            process_family_lobbying(dataset, item, member)
 
-            elif category_id == 9:
-                # Miscellaneous
-                process_miscellaneous(dataset, item, member)
-
-            elif category_id == 10:
-                # Family members employed
-                process_family_employed(dataset, item, member)
-
-            elif category_id == 11:
-                # Family members engaged in lobbying
-                process_family_lobbying(dataset, item, member)
-
-            else:
-                dataset.log.warning(f"Unknown category ID: {category_id}")
-
-        # Advance pagination
-        PARAMS["Skip"] += PARAMS["Take"]
-        total = data.get("totalResults", 0)
-        if PARAMS["Skip"] >= total:
-            break
+        else:
+            dataset.log.warning(f"Unknown category ID: {category_id}")
 
 
 if __name__ == "__main__":

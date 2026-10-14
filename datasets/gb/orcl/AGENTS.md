@@ -59,8 +59,9 @@ If you want a full refresh, delete those snapshot JSON files (or `data/resources
 
 ## Safety limits
 
-- `MAX_CLIENT_PAGES = 10` prevents infinite loops in broken pagination.
-- If hit, crawler logs a warning and keeps partial data for that quarter.
+- Client lists are paged until there is no "Next clients" link (the old 10-page cap silently truncated at least one large firm). If a page adds no new clients, paging stops with a completeness warning (`dataset.warn_incomplete`) instead of looping.
+- A failed page fetch (main register or client list) keeps what was fetched and records a completeness warning, so the run finishes `partial`.
+- An unrecognised "Next" click handler, or a client page missing its form, raises: the Visualforce markup has changed and the parser needs updating.
 
 ## If extraction breaks in the future
 

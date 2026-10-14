@@ -128,7 +128,9 @@ def fetch_json_or_warn(dataset: Dataset, url: str, label: str):
         return dataset.fetch_json(url, cache_days=CONTENT_CACHE_DAYS)
     except HTTPError as exc:
         if exc.response is not None and exc.response.status_code in [404, 410]:
-            dataset.log.warning("Skipping missing %s: %s", label, url)
+            dataset.warn_incomplete(
+                "GOV.UK content missing", label=label, url=url, status=exc.response.status_code
+            )
             return None
         raise
 
@@ -138,7 +140,7 @@ def fetch_resource_or_warn(dataset: Dataset, name: str, url: str):
         return dataset.fetch_resource(name, url)
     except HTTPError as exc:
         if exc.response is not None and exc.response.status_code in [404, 410]:
-            dataset.log.warning("Skipping missing attachment: %s", url)
+            dataset.warn_incomplete("attachment missing", url=url, status=exc.response.status_code)
             return None
         raise
 

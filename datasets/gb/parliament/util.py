@@ -289,3 +289,32 @@ def make_legal_entity(
     entity.add("jurisdiction", "gb")
     dataset.emit(entity)
     return entity
+
+
+def iter_api_items(dataset, url, params, skip_key="skip", take_key="take"):
+    """Yield every item from a paginated Parliament API (skip/take + totalResults).
+
+    Records a completeness warning if fewer items arrive than the API reports,
+    e.g. because a page came back empty part way through.
+    """
+    params = dict(params)
+    received = 0
+    total = None
+    while True:
+        dataset.log.info(f"Fetching {url} with params: {params}")
+        data = dataset.fetch_json(url, params=params, cache_days=7)
+        if data is None:
+            break
+        total = data.get("totalResults", total)
+        items = data.get("items", [])
+        if not items:
+            break
+        yield from items
+        received += len(items)
+        params[skip_key] += params[take_key]
+        if total is not None and params[skip_key] >= total:
+            break
+    if total is None or received < total:
+        dataset.warn_incomplete(
+            "fewer API items than totalResults", url=url, received=received, total=total
+        )
