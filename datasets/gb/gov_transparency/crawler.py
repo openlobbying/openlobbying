@@ -143,6 +143,8 @@ def fetch_resource_or_warn(dataset: Dataset, name: str, url: str):
         raise
 
 
+# The incremental manifest is working state for the schema-authoring tools
+# (tools/next_blocker, tools/runner). The crawl itself does not read or write it.
 def incremental_manifest_path(dataset: Dataset) -> Path:
     return dataset.data_path / "incremental-manifest.json"
 
@@ -220,26 +222,6 @@ def should_skip_source(
         and source_entry.get("schema_registry_signature") == schema_registry_signature()
         and source_entry.get("status") == "processed"
     )
-
-
-def update_manifest_for_source(
-    manifest: dict[str, Any],
-    provenance: "ProvenanceT",
-    source_reference: SourceReference,
-    *,
-    status: str,
-    file_format: str | None,
-    sheet_fingerprints: list[str] | None = None,
-) -> None:
-    manifest.setdefault("sources", {})[make_source_key(provenance)] = {
-        "url": provenance.url,
-        "resource_path": str(source_reference.resource_path) if source_reference.resource_path is not None else None,
-        "source_signature": source_reference.source_signature,
-        "schema_registry_signature": schema_registry_signature(),
-        "status": status,
-        "file_format": file_format,
-        "sheet_fingerprints": sheet_fingerprints or [],
-    }
 
 
 def get_attachment_filename(attachment: dict, publication_path: str) -> str:
@@ -396,16 +378,6 @@ def last_non_empty_index(row: list[str]) -> int:
     return -1
 
 
-def should_fail_on_unknown(dataset: Dataset) -> bool:
-    value = dataset._data.get("fail_on_unknown", True)
-    return bool(value)
-
-
-def should_continue_on_error(dataset: Dataset) -> bool:
-    value = dataset._data.get("continue_on_error", False)
-    return bool(value)
-
-
 def should_write_trace(dataset: Dataset) -> bool:
     value = dataset._data.get("trace_enabled", False)
     return bool(value)
@@ -414,51 +386,30 @@ def should_write_trace(dataset: Dataset) -> bool:
 def crawl(dataset: Dataset):
     trace_path = dataset.data_path / "trace" / "manifest.jsonl"
     trace = TraceWriter(trace_path) if should_write_trace(dataset) else NullTraceWriter()
-    incremental_manifest = load_incremental_manifest(dataset) if should_use_incremental_manifest(dataset) else None
     stats = {
         "sources_processed": 0,
-        "sources_skipped": 0,
         "sheets_processed": 0,
         "unknown_fingerprints": 0,
         "validated_sheets": 0,
         "entities_emitted": 0,
-        "source_errors": 0,
     }
 
+    # Each source file is a unit: one that fails (e.g. an unknown sheet layout) is
+    # skipped and recorded, and `muckrake crawl --retry-failed` re-runs it.
     try:
         for collection in iter_collection_configs(dataset):
             for filename, provenance in iter_collection_sources(dataset, collection):
-                try:
-                    process_source(dataset, filename, provenance, stats, trace, incremental_manifest)
-                except Exception as exc:
-                    stats["source_errors"] += 1
-                    write_source_trace(
-                        trace,
-                        provenance,
-                        filename,
-                        resource_path=None,
-                        file_format=None,
-                        status="source_error",
-                        error=str(exc),
-                    )
-                    if should_continue_on_error(dataset):
-                        dataset.log.exception("Failed to process source: %s", provenance.url)
-                        continue
-                    raise
+                dataset.run_unit(provenance.url, process_source, dataset, filename, provenance, stats, trace)
     finally:
         trace.close()
-        if incremental_manifest is not None:
-            save_incremental_manifest(dataset, incremental_manifest)
 
     dataset.log.info(
-        "gov-transparency summary: %d sources, %d skipped, %d sheets, %d validated, %d unknown, %d entities, %d source_errors%s",
+        "gov-transparency summary: %d sources, %d sheets, %d validated, %d unknown, %d entities%s",
         stats["sources_processed"],
-        stats["sources_skipped"],
         stats["sheets_processed"],
         stats["validated_sheets"],
         stats["unknown_fingerprints"],
         stats["entities_emitted"],
-        stats["source_errors"],
         f" trace={trace_path}" if should_write_trace(dataset) else "",
     )
 
@@ -499,35 +450,14 @@ def process_source(
     provenance: "ProvenanceT",
     stats: dict[str, int],
     trace: "TraceWriterT",
-    incremental_manifest: dict[str, Any] | None,
 ) -> None:
     source_reference = load_source_reference(dataset, filename, provenance)
     if source_reference.data is None:
         return
 
-    if incremental_manifest is not None and should_skip_source(incremental_manifest, provenance, source_reference):
-        stats["sources_skipped"] += 1
-        write_source_trace(
-            trace,
-            provenance,
-            filename,
-            source_reference.resource_path,
-            file_format=None,
-            status="skipped_unchanged",
-        )
-        return
-
     file_format = detect_file_format(source_reference.data, filename)
     if file_format is None:
         write_source_trace(trace, provenance, filename, source_reference.resource_path, file_format=None, status="unsupported")
-        if incremental_manifest is not None:
-            update_manifest_for_source(
-                incremental_manifest,
-                provenance,
-                source_reference,
-                status="unsupported",
-                file_format=None,
-            )
         return
 
     try:
@@ -547,30 +477,12 @@ def process_source(
     status = "empty" if not sheets else source_reference.fetch_status
     if not sheets:
         write_source_trace(trace, provenance, filename, source_reference.resource_path, file_format=file_format, status=status)
-        if incremental_manifest is not None:
-            update_manifest_for_source(
-                incremental_manifest,
-                provenance,
-                source_reference,
-                status=status,
-                file_format=file_format,
-            )
         return
 
     stats["sources_processed"] += 1
     stats["sheets_processed"] += len(sheets)
     for sheet in sheets:
         process_sheet(dataset, sheet, provenance, source_reference.resource_path, file_format, stats, trace)
-
-    if incremental_manifest is not None:
-        update_manifest_for_source(
-            incremental_manifest,
-            provenance,
-            source_reference,
-            status="processed",
-            file_format=file_format,
-            sheet_fingerprints=[fingerprint(sheet) for sheet in sheets],
-        )
 
 
 def process_sheet(
@@ -606,9 +518,7 @@ def process_sheet(
         trace_record["status"] = "schema_missing"
         trace.write(trace_record)
         report_unknown_fingerprint(dataset, provenance, resource_path, sheet, sheet_fingerprint)
-        if should_fail_on_unknown(dataset):
-            raise ValueError(f"UNKNOWN FINGERPRINT: {sheet_fingerprint}")
-        return
+        raise ValueError(f"UNKNOWN FINGERPRINT: {sheet_fingerprint}")
 
     try:
         validate_schema(schema, sheet)

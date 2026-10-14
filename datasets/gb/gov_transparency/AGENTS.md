@@ -16,6 +16,8 @@ Use `uv` for all commands.
 
 Use `uv run muckrake crawl gb_gov_transparency` only as an occasional integration check, not as the default loop.
 
+Each source file is a unit of work: a source that raises (e.g. an unknown fingerprint) is skipped and listed in the crawl summary, and the run finishes as `partial`. After adding schemas, `uv run muckrake crawl gb_gov_transparency --retry-failed` re-runs only the sources that failed. The incremental manifest (`data/datasets/gb_gov_transparency/incremental-manifest.json`) is working state for `next_blocker`/`runner` only; the crawl no longer uses it.
+
 ## Commands
 
 Run tests:
