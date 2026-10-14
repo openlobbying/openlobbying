@@ -19,7 +19,6 @@ AJAX_HEADERS = {
     "Origin": BASE_URL,
     "Accept": "*/*",
 }
-MAX_CLIENT_PAGES = 10
 
 MONTHS = {
     "january": 1,
@@ -113,13 +112,9 @@ def crawl(context: Dataset):
             break
 
         onclick = next_page_link.get("onclick")
-        if not isinstance(onclick, str):
-            context.log.warning("Missing or invalid Next Page click handler. Stopping.")
-            break
-        parsed = parse_ajax_submit(onclick)
+        parsed = parse_ajax_submit(onclick) if isinstance(onclick, str) else None
         if parsed is None:
-            context.log.warning("Could not parse Next Page click handler. Stopping.")
-            break
+            raise ValueError(f"Unrecognised Next Page click handler: {onclick!r}")
 
         container_id, link_id, _ = parsed
 
@@ -137,7 +132,9 @@ def crawl(context: Dataset):
 
         res = post_ajax(session, SEARCH_URL, payload)
         if res.status_code != 200:
-            context.log.error(f"Page {page_num} fetch failed with {res.status_code}")
+            context.warn_incomplete(
+                "register page fetch failed", page=page_num, status=res.status_code
+            )
             break
 
         soup = BeautifulSoup(res.text, "html.parser")
@@ -441,25 +438,28 @@ def fetch_all_clients_from_form(
     clients = []
     pages = 0
 
-    while clients_form is not None and pages < MAX_CLIENT_PAGES:
+    while True:
         pages += 1
+        new_clients = 0
         for client_name in extract_clients_from_container(clients_form):
             if client_name in seen:
                 continue
             seen.add(client_name)
             clients.append(client_name)
+            new_clients += 1
 
         next_link = clients_form.find("a", text=re.compile(r"Next clients", re.I))
         if not next_link:
             break
+        # Paging that stops yielding new clients would otherwise loop forever.
+        if new_clients == 0:
+            context.warn_incomplete("client paging stalled", profile=profile_url, pages=pages)
+            break
 
         onclick = next_link.get("onclick")
-        if not isinstance(onclick, str):
-            break
-
-        parsed = parse_ajax_submit(onclick)
+        parsed = parse_ajax_submit(onclick) if isinstance(onclick, str) else None
         if parsed is None:
-            break
+            raise ValueError(f"{profile_url}: unrecognised Next clients click handler: {onclick!r}")
 
         form_id, trigger_name, trigger_value = parsed
 
@@ -471,16 +471,20 @@ def fetch_all_clients_from_form(
 
         response = post_ajax(session, profile_url, payload)
         if response.status_code != 200:
+            context.warn_incomplete(
+                "client page fetch failed",
+                profile=profile_url,
+                page=pages + 1,
+                status=response.status_code,
+            )
             break
 
         page_soup = BeautifulSoup(response.text, "html.parser")
         clients_form = page_soup.find("form", id=form_id)
+        if clients_form is None:
+            raise ValueError(f"{profile_url}: client page {pages + 1} has no form {form_id!r}")
 
-    if pages >= MAX_CLIENT_PAGES:
-        context.log.warning(
-            f"{profile_url}: reached max client page limit ({MAX_CLIENT_PAGES})"
-        )
-    elif pages > 1:
+    if pages > 1:
         context.log.info(f"{profile_url}: paged clients across {pages} pages")
     return clients
 

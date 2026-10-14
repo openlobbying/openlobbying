@@ -31,3 +31,7 @@ Avoid ambiguity at all costs. If you can't be sure about something when creating
 ## Units of work
 
 Long crawlers over many independent sources (files, pages, records) should wrap each one in `dataset.run_unit(key, func, *args)`, with a stable key such as the source URL. If `func` raises, only that unit fails: nothing it emitted is written, the run finishes as `partial` with the failures counted by error type, and `uv run muckrake crawl <dataset> --retry-failed` re-runs the failed units (and resumes a crawl that crashed) without redoing the rest. Crashing loudly still applies inside a unit: raise rather than guess, and the unit is skipped and reported. See `datasets/gb/gov_transparency/crawler.py`.
+
+## Completeness warnings
+
+Never stop silently. If a crawler knowingly stops short of the full source (a page cap, an API returning fewer items than its reported total, a linked file that 404s), record it with `dataset.warn_incomplete("fixed reason phrase", **context)` instead of only logging it. The run then finishes as `partial`, the warning is counted in the crawl summary, and `release-build` reports it. Paginated Parliament APIs should use `iter_api_items` in `datasets/gb/parliament/util.py`, which checks `totalResults`. Errors that mean the scraper no longer matches the site (unrecognised markup) should still raise.

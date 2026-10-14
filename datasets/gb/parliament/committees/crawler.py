@@ -1,4 +1,4 @@
-from ..util import make_committee
+from ..util import iter_api_items, make_committee
 
 def crawl(dataset):
 
@@ -10,20 +10,8 @@ def crawl(dataset):
         "CommitteeStatus": "All"
     }
 
-    while True:
-        dataset.log.info(f"Crawling committees with params: {PARAMS}")
-        data = dataset.fetch_json(BASE_URL, params=PARAMS, cache_days=7)
-        if data is None:
-            break
-
-        items = data.get('items', [])
-        if not items:
-            break
-
-        for item in items:
-            make_committee(dataset, item)
-
-        PARAMS['skip'] += PARAMS['take']
+    for item in iter_api_items(dataset, BASE_URL, PARAMS):
+        make_committee(dataset, item)
 
 if __name__ == "__main__":
     pass

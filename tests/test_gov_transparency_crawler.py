@@ -54,6 +54,7 @@ class DummyDataset:
     def __init__(self, tmp_path):
         self._data = {"collections": ["example-collection"]}
         self.failed_units = []
+        self.incomplete = []
         self.prefix = "gb-gov"
         self.emitted = []
         self.data_path = tmp_path
@@ -96,6 +97,9 @@ class DummyDataset:
 
     def emit(self, entity):
         self.emitted.append(entity)
+
+    def warn_incomplete(self, reason, **context):
+        self.incomplete.append({"reason": reason, **context})
 
     def run_unit(self, key, func, *args, **kwargs):
         try:
@@ -459,3 +463,19 @@ def test_next_blocker_skips_blocker_clear_sources_from_manifest(tmp_path, monkey
     assert exit_code == 0
     payload = json.loads(capsys.readouterr().out)
     assert payload["resource"].endswith("late.csv")
+
+
+def test_missing_attachment_is_a_completeness_warning(tmp_path):
+    from unittest.mock import Mock
+
+    from requests import HTTPError
+
+    dataset = DummyDataset(tmp_path)
+
+    def gone(name, url):
+        raise HTTPError(response=Mock(status_code=410))
+
+    dataset.fetch_resource = gone
+    url = "https://assets.publishing.service.gov.uk/gone.csv"
+    assert MODULE.fetch_resource_or_warn(dataset, "gone.csv", url) is None
+    assert dataset.incomplete == [{"reason": "attachment missing", "url": url, "status": 410}]
