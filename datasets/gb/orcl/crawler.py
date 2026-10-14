@@ -437,6 +437,7 @@ def fetch_all_clients_from_form(
     seen = set()
     clients = []
     pages = 0
+    pages_without_new = 0
 
     while True:
         pages += 1
@@ -451,8 +452,11 @@ def fetch_all_clients_from_form(
         next_link = clients_form.find("a", text=re.compile(r"Next clients", re.I))
         if not next_link:
             break
-        # Paging that stops yielding new clients would otherwise loop forever.
-        if new_clients == 0:
+        # The first "Next clients" postback on a profile page returns page 1 again,
+        # so one repeated page is normal. Two in a row means paging is stuck, which
+        # would otherwise loop forever.
+        pages_without_new = 0 if new_clients else pages_without_new + 1
+        if pages_without_new >= 2:
             context.warn_incomplete("client paging stalled", profile=profile_url, pages=pages)
             break
 
@@ -530,12 +534,9 @@ def collect_quarter_snapshots(
     )
     for link in previous_links:
         onclick = link.get("onclick")
-        if not isinstance(onclick, str):
-            continue
-
-        parsed = parse_ajax_submit(onclick)
+        parsed = parse_ajax_submit(onclick) if isinstance(onclick, str) else None
         if parsed is None:
-            continue
+            raise ValueError(f"{profile_url}: unrecognised previous-quarter click handler: {onclick!r}")
 
         form_id, trigger_name, trigger_value = parsed
 
@@ -548,8 +549,11 @@ def collect_quarter_snapshots(
         # time.sleep(0.1)
         response = post_ajax(session, profile_url, payload)
         if response.status_code != 200:
-            context.log.warning(
-                f"Failed to fetch previous client list for {profile_url} ({response.status_code})"
+            context.warn_incomplete(
+                "previous quarter fetch failed",
+                profile=profile_url,
+                quarter=link.get_text(" ", strip=True),
+                status=response.status_code,
             )
             continue
 

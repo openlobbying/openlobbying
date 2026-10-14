@@ -59,8 +59,8 @@ If you want a full refresh, delete those snapshot JSON files (or `data/resources
 
 ## Safety limits
 
-- Client lists are paged until there is no "Next clients" link (the old 10-page cap silently truncated at least one large firm). If a page adds no new clients, paging stops with a completeness warning (`dataset.warn_incomplete`) instead of looping.
-- A failed page fetch (main register or client list) keeps what was fetched and records a completeness warning, so the run finishes `partial`.
+- Client lists are paged until there is no "Next clients" link (replacing an old 10-page cap, which one large firm's profile hit in the July 2026 ingest baseline). The first "Next clients" postback on a profile page returns page 1 again, so one repeated page is expected; two pages in a row without new clients stops paging with a completeness warning (`dataset.warn_incomplete`) instead of looping.
+- A failed page fetch (main register, client list or a previous quarter) keeps what was fetched and records a completeness warning, so the run finishes `partial`.
 - An unrecognised "Next" click handler, or a client page missing its form, raises: the Visualforce markup has changed and the parser needs updating.
 
 ## If extraction breaks in the future
