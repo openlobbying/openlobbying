@@ -20,7 +20,9 @@ def load_manifest(path: Path) -> dict[tuple[str, str], dict]:
 
 def main(argv: list[str]) -> int:
     if len(argv) != 3:
-        print("Usage: uv run python -m datasets.gb.gov_transparency.trace_diff <old.jsonl> <new.jsonl>")
+        print(
+            "Usage: uv run python -m datasets.gb.gov_transparency.trace_diff <old.jsonl> <new.jsonl>"
+        )
         return 1
 
     old_records = load_manifest(Path(argv[1]))
@@ -37,7 +39,10 @@ def main(argv: list[str]) -> int:
         new_record = new_records[key]
         old_counts = old_record.get("row_counts", {})
         new_counts = new_record.get("row_counts", {})
-        if old_record.get("fingerprint") != new_record.get("fingerprint") or old_counts != new_counts:
+        if (
+            old_record.get("fingerprint") != new_record.get("fingerprint")
+            or old_counts != new_counts
+        ):
             changed.append(
                 {
                     "key": key,
@@ -48,7 +53,11 @@ def main(argv: list[str]) -> int:
                 }
             )
 
-    print(json.dumps({"added": added, "removed": removed, "changed": changed}, indent=2, sort_keys=True))
+    print(
+        json.dumps(
+            {"added": added, "removed": removed, "changed": changed}, indent=2, sort_keys=True
+        )
+    )
     return 0
 
 

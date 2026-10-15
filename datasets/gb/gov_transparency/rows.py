@@ -27,8 +27,12 @@ except ImportError:
     common_spec.loader.exec_module(common_module)
     normalise_marker = common_module.normalise_marker
     should_skip_row = common_module.should_skip_row
-    detect_header_row = common_module.load_sibling_module(__file__, __name__, "fingerprint").detect_header_row
-    NormalisedSheet = common_module.load_sibling_module(__file__, __name__, "normalise").NormalisedSheet
+    detect_header_row = common_module.load_sibling_module(
+        __file__, __name__, "fingerprint"
+    ).detect_header_row
+    NormalisedSheet = common_module.load_sibling_module(
+        __file__, __name__, "normalise"
+    ).NormalisedSheet
     Schema = common_module.load_sibling_module(__file__, __name__, "schema").Schema
 
 
@@ -51,10 +55,12 @@ class RowStats:
     blank_end_date_rows: int = 0
 
 
-_ROW_EVAL_CACHE: dict[tuple[tuple[tuple[str, ...], ...], tuple], tuple[list[RowOutcome], RowStats]] = {}
+_ROW_EVAL_CACHE: dict[
+    tuple[tuple[tuple[str, ...], ...], tuple], tuple[list[RowOutcome], RowStats]
+] = {}
 
 
-def evaluate_rows(sheet: "NormalisedSheetT", schema: "SchemaT") -> tuple[list[RowOutcome], RowStats]:
+def evaluate_rows(sheet: NormalisedSheetT, schema: SchemaT) -> tuple[list[RowOutcome], RowStats]:
     schema_key = (
         schema.fingerprint,
         schema.layout.data_start_offset,
@@ -96,7 +102,9 @@ def evaluate_rows(sheet: "NormalisedSheetT", schema: "SchemaT") -> tuple[list[Ro
             else:
                 last_values[column_index] = value
 
-        mapped_values = [get_row_value(current, column_index).strip() for column_index in mapped_columns]
+        mapped_values = [
+            get_row_value(current, column_index).strip() for column_index in mapped_columns
+        ]
         nil_check_values = list(mapped_values)
         if schema.date.mode in {"column", "column_range"}:
             nil_check_values.append(get_row_value(current, schema.date.column).strip())
@@ -109,7 +117,9 @@ def evaluate_rows(sheet: "NormalisedSheetT", schema: "SchemaT") -> tuple[list[Ro
         if any(mapped_values):
             stats = replace_stats(stats, mapped_rows=stats.mapped_rows + 1)
 
-        if nil_markers and any(normalise_marker(value) in nil_markers for value in nil_check_values if value):
+        if nil_markers and any(
+            normalise_marker(value) in nil_markers for value in nil_check_values if value
+        ):
             stats = replace_stats(stats, nil_rows=stats.nil_rows + 1)
             continue
 
@@ -117,11 +127,17 @@ def evaluate_rows(sheet: "NormalisedSheetT", schema: "SchemaT") -> tuple[list[Ro
             stats = replace_stats(stats, blank_rows=stats.blank_rows + 1)
             continue
 
-        if schema.date.mode in {"column", "column_range"} and get_row_value(current, schema.date.column).strip() == "":
+        if (
+            schema.date.mode in {"column", "column_range"}
+            and get_row_value(current, schema.date.column).strip() == ""
+        ):
             stats = replace_stats(stats, blank_date_rows=stats.blank_date_rows + 1)
             continue
 
-        if schema.date.end_column is not None and get_row_value(current, schema.date.end_column).strip() == "":
+        if (
+            schema.date.end_column is not None
+            and get_row_value(current, schema.date.end_column).strip() == ""
+        ):
             stats = replace_stats(stats, blank_end_date_rows=stats.blank_end_date_rows + 1)
             continue
 

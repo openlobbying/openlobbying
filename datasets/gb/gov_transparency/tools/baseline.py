@@ -33,16 +33,28 @@ except ImportError:
     common_spec.loader.exec_module(common_module)
     load_sibling_module = common_module.load_sibling_module
     parse_period = common_module.parse_period
-    normalise = load_sibling_module(Path(__file__).resolve().parents[1] / "normalise.py", __name__, "normalise").normalise
-    fingerprint = load_sibling_module(Path(__file__).resolve().parents[1] / "fingerprint.py", __name__, "fingerprint").fingerprint
-    extract = load_sibling_module(Path(__file__).resolve().parents[1] / "extract.py", __name__, "extract").extract
-    emit_entities = load_sibling_module(Path(__file__).resolve().parents[1] / "entities.py", __name__, "entities").emit_entities
-    schema_module = load_sibling_module(Path(__file__).resolve().parents[1] / "schema.py", __name__, "schema")
+    normalise = load_sibling_module(
+        Path(__file__).resolve().parents[1] / "normalise.py", __name__, "normalise"
+    ).normalise
+    fingerprint = load_sibling_module(
+        Path(__file__).resolve().parents[1] / "fingerprint.py", __name__, "fingerprint"
+    ).fingerprint
+    extract = load_sibling_module(
+        Path(__file__).resolve().parents[1] / "extract.py", __name__, "extract"
+    ).extract
+    emit_entities = load_sibling_module(
+        Path(__file__).resolve().parents[1] / "entities.py", __name__, "entities"
+    ).emit_entities
+    schema_module = load_sibling_module(
+        Path(__file__).resolve().parents[1] / "schema.py", __name__, "schema"
+    )
     SCHEMAS_DIR = schema_module.SCHEMAS_DIR
     load_schema = schema_module.load_schema
     schema_from_dict = schema_module.schema_from_dict
     validate_schema = schema_module.validate_schema
-    Provenance = load_sibling_module(Path(__file__).resolve().parents[1] / "types.py", __name__, "types").Provenance
+    Provenance = load_sibling_module(
+        Path(__file__).resolve().parents[1] / "types.py", __name__, "types"
+    ).Provenance
 
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -68,11 +80,13 @@ class CountingDataset:
         self.emitted = []
 
     def make(self, schema: str):
-        from followthemoney.statement.entity import StatementEntity
         from followthemoney import Dataset as FTMDataset
+        from followthemoney.statement.entity import StatementEntity
 
         if not hasattr(self, "ftm"):
-            self.ftm = FTMDataset.make({"name": "gb_gov_transparency_baseline", "prefix": self.prefix})
+            self.ftm = FTMDataset.make(
+                {"name": "gb_gov_transparency_baseline", "prefix": self.prefix}
+            )
         return StatementEntity(self.ftm, {"schema": schema})
 
     def make_id(self, *parts, **kwargs):
@@ -95,7 +109,7 @@ def make_case_url(case: BaselineCase) -> str:
     return f"https://example.test/{case.name}"
 
 
-def make_provenance(case: BaselineCase) -> "ProvenanceT":
+def make_provenance(case: BaselineCase) -> ProvenanceT:
     period_start, period_end = parse_period(case.publication_title)
     if period_start is None or period_end is None:
         raise ValueError(f"Could not parse period for baseline case: {case.name}")

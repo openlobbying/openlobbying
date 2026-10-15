@@ -5,7 +5,7 @@ import json
 import sys
 from dataclasses import dataclass, field
 from datetime import date
-from functools import lru_cache
+from functools import cache
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -26,7 +26,9 @@ except ImportError:
     sys.modules[common_spec.name] = common_module
     common_spec.loader.exec_module(common_module)
     load_sibling_module = common_module.load_sibling_module
-    NormalisedSheet = common_module.load_sibling_module(__file__, __name__, "normalise").NormalisedSheet
+    NormalisedSheet = common_module.load_sibling_module(
+        __file__, __name__, "normalise"
+    ).NormalisedSheet
 
 SCHEMAS_DIR = Path(__file__).with_name("schemas")
 DEFAULT_NIL_RETURN_MARKERS = [
@@ -107,7 +109,7 @@ class Schema:
     role_mode: str = "default"
 
 
-@lru_cache(maxsize=None)
+@cache
 def load_schema(fingerprint: str) -> Schema | None:
     path = SCHEMAS_DIR / f"{fingerprint}.json"
     if not path.exists():
@@ -121,7 +123,17 @@ def schema_from_dict(data: dict[str, Any]) -> Schema:
     if not isinstance(data, dict):
         raise ValueError("Schema file must contain a JSON object")
 
-    allowed_keys = {"fingerprint", "sheet_type", "reason", "activity_type", "subject", "layout", "date", "mapping", "role_mode"}
+    allowed_keys = {
+        "fingerprint",
+        "sheet_type",
+        "reason",
+        "activity_type",
+        "subject",
+        "layout",
+        "date",
+        "mapping",
+        "role_mode",
+    }
     unknown_keys = sorted(set(data) - allowed_keys)
     if unknown_keys:
         raise ValueError(f"Unknown schema fields: {', '.join(unknown_keys)}")
@@ -181,7 +193,7 @@ def schema_from_dict(data: dict[str, Any]) -> Schema:
     )
 
 
-def validate_schema(schema: Schema, sheet: "NormalisedSheetT") -> None:
+def validate_schema(schema: Schema, sheet: NormalisedSheetT) -> None:
     resolve_date, evaluate_rows = load_validation_helpers()
 
     max_columns = max((len(row) for row in sheet.rows), default=0)
@@ -189,10 +201,16 @@ def validate_schema(schema: Schema, sheet: "NormalisedSheetT") -> None:
         if index < 0 or index >= max_columns:
             raise ValueError(f"Schema column {name!r} points outside sheet width: {index}")
 
-    if schema.date.column is not None and (schema.date.column < 0 or schema.date.column >= max_columns):
+    if schema.date.column is not None and (
+        schema.date.column < 0 or schema.date.column >= max_columns
+    ):
         raise ValueError(f"Schema date column points outside sheet width: {schema.date.column}")
-    if schema.date.end_column is not None and (schema.date.end_column < 0 or schema.date.end_column >= max_columns):
-        raise ValueError(f"Schema end date column points outside sheet width: {schema.date.end_column}")
+    if schema.date.end_column is not None and (
+        schema.date.end_column < 0 or schema.date.end_column >= max_columns
+    ):
+        raise ValueError(
+            f"Schema end date column points outside sheet width: {schema.date.end_column}"
+        )
 
     if schema.sheet_type != "data":
         return
@@ -218,9 +236,15 @@ def validate_schema(schema: Schema, sheet: "NormalisedSheetT") -> None:
     has_date = False
     for row in rows:
         try:
-            resolved = resolve_date(row.values, schema, period_start=date(1900, 1, 1), period_end=date(1900, 12, 31))
+            resolved = resolve_date(
+                row.values, schema, period_start=date(1900, 1, 1), period_end=date(1900, 12, 31)
+            )
         except Exception as exc:
-            raw_date = row.values[schema.date.column] if schema.date.column is not None and schema.date.column < len(row.values) else ""
+            raw_date = (
+                row.values[schema.date.column]
+                if schema.date.column is not None and schema.date.column < len(row.values)
+                else ""
+            )
             raise ValueError(
                 f"Cannot parse date value {raw_date!r} at row_index={row.row_index} in sheet {sheet.name!r}; "
                 f"mapped={row.mapped}; layout.fill_down_columns={schema.layout.fill_down_columns}; "
@@ -229,7 +253,9 @@ def validate_schema(schema: Schema, sheet: "NormalisedSheetT") -> None:
         if resolved:
             has_date = True
     if schema.date.mode != "none" and not has_date:
-        raise ValueError(f"Schema {schema.fingerprint} has no parseable date values in sheet {sheet.name!r}")
+        raise ValueError(
+            f"Schema {schema.fingerprint} has no parseable date values in sheet {sheet.name!r}"
+        )
 
 
 def load_validation_helpers():
@@ -262,11 +288,24 @@ def subject_from_dict(data: Any) -> SubjectConfig:
 def layout_from_dict(data: Any, sheet_type: str) -> LayoutConfig:
     if not isinstance(data, dict):
         raise ValueError("Schema 'layout' must be an object")
-    allowed_keys = {"data_start_offset", "fill_down_columns", "skip_row_prefixes", "nil_return_markers"}
+    allowed_keys = {
+        "data_start_offset",
+        "fill_down_columns",
+        "skip_row_prefixes",
+        "nil_return_markers",
+    }
     unknown_keys = sorted(set(data) - allowed_keys)
     if unknown_keys:
         raise ValueError(f"Unknown layout fields: {', '.join(unknown_keys)}")
-    if sheet_type != "data" and any(key in data for key in ("data_start_offset", "fill_down_columns", "skip_row_prefixes", "nil_return_markers")):
+    if sheet_type != "data" and any(
+        key in data
+        for key in (
+            "data_start_offset",
+            "fill_down_columns",
+            "skip_row_prefixes",
+            "nil_return_markers",
+        )
+    ):
         if data:
             raise ValueError("Only data schemas may define layout settings")
     nil_markers = require_string_list(data, "nil_return_markers")
@@ -327,7 +366,9 @@ def mapping_from_dict(data: Any, sheet_type: str, subject: SubjectConfig) -> dic
     if sheet_type != "data" and data:
         raise ValueError("Only data schemas may define mapped columns")
     if sheet_type == "data" and subject.source == "column" and "official_name" not in data:
-        raise ValueError("Data schemas with subject.source='column' must define an official_name column")
+        raise ValueError(
+            "Data schemas with subject.source='column' must define an official_name column"
+        )
     if subject.source != "column" and "official_name" in data:
         raise ValueError("official_name must not be mapped when subject.source is not 'column'")
     return {key: require_mapping_int(data, key) for key in data}

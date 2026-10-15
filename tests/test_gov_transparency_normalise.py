@@ -1,7 +1,6 @@
-from pathlib import Path
 import importlib.util
 import sys
-
+from pathlib import Path
 
 MODULE_PATH = Path("datasets/gb/gov_transparency/normalise.py")
 SPEC = importlib.util.spec_from_file_location("gov_transparency_normalise", MODULE_PATH)

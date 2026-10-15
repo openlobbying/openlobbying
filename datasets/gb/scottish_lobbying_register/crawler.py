@@ -1,7 +1,7 @@
-import requests
-from bs4 import BeautifulSoup
 import csv
 
+import requests
+from bs4 import BeautifulSoup
 from muckrake.util import parse_date
 
 BASE_URL = "https://www.lobbying.scot/SPS/"
@@ -167,9 +167,7 @@ def crawl(dataset):
             registrant.add("address", address)
 
         responsible_person = details_soup.select_one('input[name="ResponsiblePerson"]')
-        responsible_person_entry = (
-            responsible_person.get("value") if responsible_person else None
-        )
+        responsible_person_entry = responsible_person.get("value") if responsible_person else None
         if responsible_person_entry:
             responsible_person = dataset.make("Person")
             responsible_person.id = dataset.make_id(
@@ -231,9 +229,7 @@ def crawl(dataset):
     if export_form is None:
         raise ValueError("Missing export form on information returns results page")
 
-    export_token_input = export_form.select_one(
-        'input[name="__RequestVerificationToken"]'
-    )
+    export_token_input = export_form.select_one('input[name="__RequestVerificationToken"]')
     if export_token_input is None:
         raise ValueError("Missing export token on information returns results page")
 
@@ -275,7 +271,7 @@ def crawl(dataset):
         timeout=300,
     )
 
-    with open(path, "r", encoding="utf-8", newline="") as f:
+    with open(path, encoding="utf-8", newline="") as f:
         dataset.log.info("Processing information returns")
         reader = csv.DictReader(f, fieldnames=INFORMATION_RETURNS_COLUMNS)
         next(reader, None)
@@ -320,9 +316,7 @@ def crawl(dataset):
             # create hosts (politicians)
             persons_lobbied = row.get("Persons lobbied")
             persons_lobbied = (
-                [p.strip() for p in persons_lobbied.split(";")]
-                if persons_lobbied
-                else []
+                [p.strip() for p in persons_lobbied.split(";")] if persons_lobbied else []
             )
 
             persons_lobbied_roles = row.get("Person lobbied roles")
@@ -334,9 +328,7 @@ def crawl(dataset):
 
             for i, name in enumerate(persons_lobbied):
                 politician = dataset.make("Person")
-                politician.id = dataset.make_id(
-                    "scottish_lobbying_register", "politician", name
-                )
+                politician.id = dataset.make_id("scottish_lobbying_register", "politician", name)
                 politician.add("name", name)
                 politician.add("jurisdiction", "gb-sct")
                 politician.add("topics", "role.pep")
@@ -346,9 +338,7 @@ def crawl(dataset):
 
             # create meeting participants
             registrant_name = row.get("Registrant name")
-            undertaken_on_registrants_behalf = row.get(
-                "Undertaken on registrants behalf"
-            )
+            undertaken_on_registrants_behalf = row.get("Undertaken on registrants behalf")
             if undertaken_on_registrants_behalf == "No":
                 # create lobbyist
                 lobbyist = dataset.make("Organization")
@@ -363,9 +353,7 @@ def crawl(dataset):
                 # create client
                 client = dataset.make("Organization")
                 client_name = row.get("Client name")
-                client.id = dataset.make_id(
-                    "scottish_lobbying_register", "client", client_name
-                )
+                client.id = dataset.make_id("scottish_lobbying_register", "client", client_name)
                 client.add("name", client_name)
                 dataset.emit(client)
                 meeting.add("involved", client)
@@ -382,9 +370,7 @@ def crawl(dataset):
 
                 # add lobbyist employment
                 employees = row.get("Lobbyist names")
-                employees = (
-                    [e.strip() for e in employees.split(";")] if employees else []
-                )
+                employees = [e.strip() for e in employees.split(";")] if employees else []
                 for employee_name in employees:
                     employee = dataset.make("Person")
                     employee.id = dataset.make_id(

@@ -29,7 +29,7 @@ except ImportError:
     Provenance = common_module.load_sibling_module(__file__, __name__, "types").Provenance
 
 
-def emit_entities(dataset: Any, row: RowDict, provenance: "ProvenanceT", schema: "SchemaT") -> int:
+def emit_entities(dataset: Any, row: RowDict, provenance: ProvenanceT, schema: SchemaT) -> int:
     person, public_body, emitted = ensure_pep_context(dataset, row, provenance)
 
     if schema.activity_type == "meetings":
@@ -45,7 +45,7 @@ def emit_entities(dataset: Any, row: RowDict, provenance: "ProvenanceT", schema:
     raise ValueError(f"Unsupported activity_type: {schema.activity_type}")
 
 
-def ensure_pep_context(dataset: Any, row: RowDict, provenance: "ProvenanceT"):
+def ensure_pep_context(dataset: Any, row: RowDict, provenance: ProvenanceT):
     person_name = str(row.get("official_name", "")).strip()
     if not person_name:
         raise ValueError("Cannot emit activity without official_name")
@@ -65,7 +65,9 @@ def ensure_pep_context(dataset: Any, row: RowDict, provenance: "ProvenanceT"):
     return person, public_body, emitted
 
 
-def emit_meeting(dataset: Any, row: RowDict, provenance: "ProvenanceT", person: Any, public_body: Any) -> int:
+def emit_meeting(
+    dataset: Any, row: RowDict, provenance: ProvenanceT, person: Any, public_body: Any
+) -> int:
     counterpart = str(row.get("counterparty_name", "")).strip()
     event = dataset.make("Meeting")
     event.id = make_row_entity_id(dataset, "meeting", provenance, row)
@@ -86,7 +88,14 @@ def emit_meeting(dataset: Any, row: RowDict, provenance: "ProvenanceT", person: 
     return emitted + 1
 
 
-def emit_hospitality(dataset: Any, row: RowDict, provenance: "ProvenanceT", schema: "SchemaT", person: Any, public_body: Any) -> int:
+def emit_hospitality(
+    dataset: Any,
+    row: RowDict,
+    provenance: ProvenanceT,
+    schema: SchemaT,
+    person: Any,
+    public_body: Any,
+) -> int:
     summary = str(row.get("summary") or "").strip()
     counterpart = str(row.get("counterparty_name", "")).strip()
 
@@ -125,7 +134,9 @@ def emit_hospitality(dataset: Any, row: RowDict, provenance: "ProvenanceT", sche
     return emitted + 1
 
 
-def emit_gift(dataset: Any, row: RowDict, provenance: "ProvenanceT", person: Any, public_body: Any) -> int:
+def emit_gift(
+    dataset: Any, row: RowDict, provenance: ProvenanceT, person: Any, public_body: Any
+) -> int:
     counterpart = str(row.get("counterparty_name", "")).strip()
     summary = str(row.get("summary") or "").strip()
     outcome_text = str(row.get("outcome_text") or "").strip()
@@ -163,7 +174,9 @@ def emit_gift(dataset: Any, row: RowDict, provenance: "ProvenanceT", person: Any
     return emitted + 1
 
 
-def emit_travel(dataset: Any, row: RowDict, provenance: "ProvenanceT", person: Any, public_body: Any) -> int:
+def emit_travel(
+    dataset: Any, row: RowDict, provenance: ProvenanceT, person: Any, public_body: Any
+) -> int:
     destination = str(row.get("location", "")).strip()
 
     event = dataset.make("Trip")
@@ -183,8 +196,12 @@ def emit_travel(dataset: Any, row: RowDict, provenance: "ProvenanceT", person: A
     return 1
 
 
-def emit_outside_employment(dataset: Any, row: RowDict, provenance: "ProvenanceT", person: Any) -> int:
-    employer_name = str(row.get("counterparty_name", "")).strip() or str(row.get("summary", "")).strip()
+def emit_outside_employment(
+    dataset: Any, row: RowDict, provenance: ProvenanceT, person: Any
+) -> int:
+    employer_name = (
+        str(row.get("counterparty_name", "")).strip() or str(row.get("summary", "")).strip()
+    )
     if not employer_name:
         raise ValueError("Outside employment rows require employer details")
 
@@ -205,7 +222,7 @@ def emit_outside_employment(dataset: Any, row: RowDict, provenance: "ProvenanceT
     return emitted + 1
 
 
-def make_person(dataset: Any, name: str, provenance: "ProvenanceT"):
+def make_person(dataset: Any, name: str, provenance: ProvenanceT):
     person = dataset.make("Person")
     person.id = dataset.make_id("person", name)
     person.add("name", name)
@@ -214,7 +231,7 @@ def make_person(dataset: Any, name: str, provenance: "ProvenanceT"):
     return person
 
 
-def make_public_body(dataset: Any, name: str, provenance: "ProvenanceT"):
+def make_public_body(dataset: Any, name: str, provenance: ProvenanceT):
     public_body = dataset.make("PublicBody")
     public_body.id = dataset.make_id("public-body", name)
     public_body.add("name", name)
@@ -223,7 +240,9 @@ def make_public_body(dataset: Any, name: str, provenance: "ProvenanceT"):
     return public_body
 
 
-def make_department_employment(dataset: Any, person: Any, public_body: Any, provenance: "ProvenanceT"):
+def make_department_employment(
+    dataset: Any, person: Any, public_body: Any, provenance: ProvenanceT
+):
     employment = dataset.make("Employment")
     employment.id = dataset.make_id("employment", person.id, public_body.id)
     employment.add("employee", person.id)
@@ -231,14 +250,14 @@ def make_department_employment(dataset: Any, person: Any, public_body: Any, prov
     return employment
 
 
-def make_legal_entity(dataset: Any, name: str, provenance: "ProvenanceT"):
+def make_legal_entity(dataset: Any, name: str, provenance: ProvenanceT):
     participant = dataset.make("LegalEntity")
     participant.id = dataset.make_id("participant", name)
     participant.add("name", name)
     return participant
 
 
-def make_organization(dataset: Any, name: str, provenance: "ProvenanceT"):
+def make_organization(dataset: Any, name: str, provenance: ProvenanceT):
     organization = dataset.make("Organization")
     organization.id = dataset.make_id("organization", name)
     organization.add("name", name)
@@ -247,7 +266,7 @@ def make_organization(dataset: Any, name: str, provenance: "ProvenanceT"):
     return organization
 
 
-def get_public_body_name(provenance: "ProvenanceT") -> str:
+def get_public_body_name(provenance: ProvenanceT) -> str:
     if provenance.department.strip():
         return provenance.department.strip()
     if ":" in provenance.publication_title:
@@ -263,7 +282,7 @@ def emit_once(dataset: Any, entity: Any) -> bool:
     emitted_ids = getattr(dataset, "_gov_transparency_emitted_ids", None)
     if emitted_ids is None:
         emitted_ids = set()
-        setattr(dataset, "_gov_transparency_emitted_ids", emitted_ids)
+        dataset._gov_transparency_emitted_ids = emitted_ids
     if entity.id in emitted_ids:
         return False
     dataset.emit(entity)
@@ -271,7 +290,7 @@ def emit_once(dataset: Any, entity: Any) -> bool:
     return True
 
 
-def make_row_entity_id(dataset: Any, prefix: str, provenance: "ProvenanceT", row: RowDict) -> str:
+def make_row_entity_id(dataset: Any, prefix: str, provenance: ProvenanceT, row: RowDict) -> str:
     return dataset.make_id(prefix, provenance.url, row.get("sheet_name"), row.get("row_index"))
 
 
@@ -293,7 +312,7 @@ def add_amount(entity: Any, row: RowDict, *field_names: str) -> None:
         return
 
 
-def apply_source(entity: Any, provenance: "ProvenanceT") -> None:
+def apply_source(entity: Any, provenance: ProvenanceT) -> None:
     entity.add("sourceUrl", provenance.url)
     entity.add("publisher", get_public_body_name(provenance))
 

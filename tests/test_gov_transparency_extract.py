@@ -1,7 +1,7 @@
-from datetime import date
-from pathlib import Path
 import importlib.util
 import sys
+from datetime import date
+from pathlib import Path
 
 
 def load_module(name: str, relative_path: str):
@@ -16,9 +16,15 @@ def load_module(name: str, relative_path: str):
 
 
 extract_module = load_module("gov_transparency_extract", "datasets/gb/gov_transparency/extract.py")
-schema_module = load_module("gov_transparency_schema_for_extract", "datasets/gb/gov_transparency/schema.py")
-types_module = load_module("gov_transparency_types_for_extract", "datasets/gb/gov_transparency/types.py")
-normalise_module = load_module("gov_transparency_normalise_for_extract", "datasets/gb/gov_transparency/normalise.py")
+schema_module = load_module(
+    "gov_transparency_schema_for_extract", "datasets/gb/gov_transparency/schema.py"
+)
+types_module = load_module(
+    "gov_transparency_types_for_extract", "datasets/gb/gov_transparency/types.py"
+)
+normalise_module = load_module(
+    "gov_transparency_normalise_for_extract", "datasets/gb/gov_transparency/normalise.py"
+)
 
 extract = extract_module.extract
 schema_from_dict = schema_module.schema_from_dict
@@ -46,7 +52,11 @@ def test_extract_applies_fill_down_and_skips_nil_rows():
             "activity_type": "meetings",
             "subject": {"source": "column"},
             "layout": {"fill_down_columns": [0], "nil_return_markers": ["Nil Return"]},
-            "date": {"mode": "column", "column": 1, "parsers": [{"type": "month_name_from_period", "precision": "month"}]},
+            "date": {
+                "mode": "column",
+                "column": 1,
+                "parsers": [{"type": "month_name_from_period", "precision": "month"}],
+            },
             "mapping": {"official_name": 0, "counterparty_name": 2, "summary": 3},
         }
     )
@@ -80,7 +90,10 @@ def test_extract_resolves_provenance_period_dates():
         }
     )
     provenance = make_provenance("gifts", "Gifts")
-    sheet = NormalisedSheet(name="Gifts", rows=[["Special adviser", "Date", "Gift"], ["Jane Doe", "Nil return", "Bottle"]])
+    sheet = NormalisedSheet(
+        name="Gifts",
+        rows=[["Special adviser", "Date", "Gift"], ["Jane Doe", "Nil return", "Bottle"]],
+    )
 
     rows = extract(sheet, schema, provenance)
 
@@ -96,7 +109,11 @@ def test_extract_can_derive_subject_name_from_provenance():
             "activity_type": "hospitality",
             "subject": {"source": "provenance"},
             "role_mode": "hosted_by_official",
-            "date": {"mode": "column", "column": 0, "parsers": [{"type": "strptime", "format": "%d/%m/%Y", "precision": "day"}]},
+            "date": {
+                "mode": "column",
+                "column": 0,
+                "parsers": [{"type": "strptime", "format": "%d/%m/%Y", "precision": "day"}],
+            },
             "mapping": {"counterparty_name": 1, "amount": 2},
         }
     )
@@ -109,7 +126,10 @@ def test_extract_can_derive_subject_name_from_provenance():
         period_start=date(2016, 4, 1),
         period_end=date(2016, 6, 30),
     )
-    sheet = NormalisedSheet(name="Guests_at_Chequers", rows=[["Period", "Name", "Total Cost"], ["05/05/2016", "Japanese State Visit", "1260"]])
+    sheet = NormalisedSheet(
+        name="Guests_at_Chequers",
+        rows=[["Period", "Name", "Total Cost"], ["05/05/2016", "Japanese State Visit", "1260"]],
+    )
 
     rows = extract(sheet, schema, provenance)
 
@@ -123,7 +143,11 @@ def test_extract_can_derive_subject_name_from_sheet_name():
             "sheet_type": "data",
             "activity_type": "hospitality",
             "subject": {"source": "sheet_name"},
-            "date": {"mode": "column", "column": 0, "parsers": [{"type": "excel_serial", "precision": "day"}]},
+            "date": {
+                "mode": "column",
+                "column": 0,
+                "parsers": [{"type": "excel_serial", "precision": "day"}],
+            },
             "mapping": {"counterparty_name": 1, "summary": 2},
         }
     )
@@ -148,12 +172,19 @@ def test_extract_parses_month_year_values():
             "sheet_type": "data",
             "activity_type": "gifts",
             "subject": {"source": "column"},
-            "date": {"mode": "column", "column": 1, "parsers": [{"type": "month_name", "precision": "month"}]},
+            "date": {
+                "mode": "column",
+                "column": 1,
+                "parsers": [{"type": "month_name", "precision": "month"}],
+            },
             "mapping": {"official_name": 0, "summary": 2},
         }
     )
     provenance = make_provenance("gifts", "Gifts")
-    sheet = NormalisedSheet(name="Gifts", rows=[["Special adviser", "Date", "Gift"], ["Jane Doe", "December 2015", "Scarf"]])
+    sheet = NormalisedSheet(
+        name="Gifts",
+        rows=[["Special adviser", "Date", "Gift"], ["Jane Doe", "December 2015", "Scarf"]],
+    )
 
     rows = extract(sheet, schema, provenance)
 
@@ -167,12 +198,19 @@ def test_extract_parses_month_precision_from_iso_datetime_cells():
             "sheet_type": "data",
             "activity_type": "gifts",
             "subject": {"source": "column"},
-            "date": {"mode": "column", "column": 1, "parsers": [{"type": "iso_datetime", "precision": "month"}]},
+            "date": {
+                "mode": "column",
+                "column": 1,
+                "parsers": [{"type": "iso_datetime", "precision": "month"}],
+            },
             "mapping": {"official_name": 0, "summary": 2},
         }
     )
     provenance = make_provenance("gifts", "Gifts")
-    sheet = NormalisedSheet(name="Gifts", rows=[["Special adviser", "Date", "Gift"], ["Jane Doe", "2016-12-01T00:00:00", "Scarf"]])
+    sheet = NormalisedSheet(
+        name="Gifts",
+        rows=[["Special adviser", "Date", "Gift"], ["Jane Doe", "2016-12-01T00:00:00", "Scarf"]],
+    )
 
     rows = extract(sheet, schema, provenance)
 
@@ -186,7 +224,11 @@ def test_extract_repairs_three_digit_iso_year_using_publication_period():
             "sheet_type": "data",
             "activity_type": "meetings",
             "subject": {"source": "column"},
-            "date": {"mode": "column", "column": 1, "parsers": [{"type": "iso_datetime", "precision": "day"}]},
+            "date": {
+                "mode": "column",
+                "column": 1,
+                "parsers": [{"type": "iso_datetime", "precision": "day"}],
+            },
             "mapping": {"official_name": 0, "counterparty_name": 2, "summary": 3},
         }
     )
@@ -202,7 +244,12 @@ def test_extract_repairs_three_digit_iso_year_using_publication_period():
     sheet = NormalisedSheet(
         name="Meetings",
         rows=[
-            ["Permanent secretary", "Date", "Person or organisation that meeting was with", "Purpose of meeting"],
+            [
+                "Permanent secretary",
+                "Date",
+                "Person or organisation that meeting was with",
+                "Purpose of meeting",
+            ],
             ["Patrick Vallance", "201-05-16", "The Guardian", "Meeting with the Science Editor"],
         ],
     )
@@ -213,7 +260,9 @@ def test_extract_repairs_three_digit_iso_year_using_publication_period():
 
 
 def test_gift_emission_uses_non_numeric_amount_as_fallback_outcome_text():
-    entities_module = load_module("gov_transparency_entities_for_extract", "datasets/gb/gov_transparency/entities.py")
+    entities_module = load_module(
+        "gov_transparency_entities_for_extract", "datasets/gb/gov_transparency/entities.py"
+    )
 
     class DummyEntity:
         def __init__(self, schema_name: str):
@@ -253,7 +302,11 @@ def test_gift_emission_uses_non_numeric_amount_as_fallback_outcome_text():
             "sheet_type": "data",
             "activity_type": "gifts",
             "subject": {"source": "column"},
-            "date": {"mode": "column", "column": 1, "parsers": [{"type": "iso_datetime", "precision": "day"}]},
+            "date": {
+                "mode": "column",
+                "column": 1,
+                "parsers": [{"type": "iso_datetime", "precision": "day"}],
+            },
             "mapping": {"official_name": 0, "counterparty_name": 2, "summary": 3, "amount": 4},
         }
     )

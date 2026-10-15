@@ -1,15 +1,13 @@
-from pathlib import Path
-import importlib.util
-import sys
-from datetime import date
 import hashlib
+import importlib.util
 import json
 import logging
+import sys
+from datetime import date
 from io import StringIO
-import tempfile
+from pathlib import Path
 
 from org_id import make_hashed_id
-
 
 MODULE_PATH = Path("datasets/gb/gov_transparency/crawler.py")
 SPEC = importlib.util.spec_from_file_location(
@@ -85,8 +83,8 @@ class DummyDataset:
         return value
 
     def make(self, schema: str):
-        from followthemoney.statement.entity import StatementEntity
         from followthemoney import Dataset as FTMDataset
+        from followthemoney.statement.entity import StatementEntity
 
         if not hasattr(self, "ftm"):
             self.ftm = FTMDataset.make({"name": "gb_gov_transparency", "prefix": self.prefix})
@@ -111,7 +109,9 @@ class DummyDataset:
 
 
 def test_parse_period_parses_common_quarter_title():
-    start, end = parse_period("DfT: ministerial gifts, hospitality, travel and meetings, January to March 2024")
+    start, end = parse_period(
+        "DfT: ministerial gifts, hospitality, travel and meetings, January to March 2024"
+    )
 
     assert start == date(2024, 1, 1)
     assert end == date(2024, 3, 31)
@@ -142,7 +142,9 @@ def test_crawl_emits_entities_for_known_schema(tmp_path):
     publication_url = MODULE.make_content_api_url("/government/publications/example-publication")
     attachment_url = "https://assets.publishing.service.gov.uk/example.csv"
     dataset.responses = {
-        collection_url: {"links": {"documents": [{"base_path": "/government/publications/example-publication"}]}},
+        collection_url: {
+            "links": {"documents": [{"base_path": "/government/publications/example-publication"}]}
+        },
         publication_url: {
             "title": "Cabinet Office: ministerial meetings, January to March 2024",
             "details": {
@@ -175,7 +177,7 @@ def test_crawl_emits_entities_for_known_schema(tmp_path):
                 "summary": 3,
             },
         }
-        )
+    )
     try:
         MODULE.crawl(dataset)
     finally:
@@ -195,7 +197,9 @@ def test_crawl_reports_unknown_fingerprint(tmp_path):
     publication_url = MODULE.make_content_api_url("/government/publications/example-publication")
     attachment_url = "https://assets.publishing.service.gov.uk/example.csv"
     dataset.responses = {
-        collection_url: {"links": {"documents": [{"base_path": "/government/publications/example-publication"}]}},
+        collection_url: {
+            "links": {"documents": [{"base_path": "/government/publications/example-publication"}]}
+        },
         publication_url: {
             "title": "Cabinet Office: ministerial meetings, January to March 2024",
             "details": {
@@ -228,7 +232,9 @@ def test_crawl_reprocesses_every_source_and_writes_no_manifest(tmp_path):
     publication_url = MODULE.make_content_api_url("/government/publications/example-publication")
     attachment_url = "https://assets.publishing.service.gov.uk/example.csv"
     responses = {
-        collection_url: {"links": {"documents": [{"base_path": "/government/publications/example-publication"}]}},
+        collection_url: {
+            "links": {"documents": [{"base_path": "/government/publications/example-publication"}]}
+        },
         publication_url: {
             "title": "Cabinet Office: ministerial meetings, January to March 2024",
             "details": {
@@ -282,7 +288,9 @@ def test_crawl_reprocesses_every_source_and_writes_no_manifest(tmp_path):
 
 def test_next_unknown_follows_crawler_collection_order(tmp_path, monkeypatch, capsys):
     collection_url = MODULE.make_content_api_url("example-collection")
-    publication_early_url = MODULE.make_content_api_url("/government/publications/early-publication")
+    publication_early_url = MODULE.make_content_api_url(
+        "/government/publications/early-publication"
+    )
     publication_late_url = MODULE.make_content_api_url("/government/publications/late-publication")
     early_attachment_url = "https://assets.publishing.service.gov.uk/early.csv"
     late_attachment_url = "https://assets.publishing.service.gov.uk/late.csv"
@@ -303,17 +311,27 @@ def test_next_unknown_follows_crawler_collection_order(tmp_path, monkeypatch, ca
         },
         publication_early_url: {
             "title": "Cabinet Office: ministerial meetings, January to March 2024",
-            "details": {"attachments": [{"url": early_attachment_url, "title": "Early", "filename": "z-last.csv"}]},
+            "details": {
+                "attachments": [
+                    {"url": early_attachment_url, "title": "Early", "filename": "z-last.csv"}
+                ]
+            },
         },
         publication_late_url: {
             "title": "Cabinet Office: ministerial meetings, January to March 2024",
-            "details": {"attachments": [{"url": late_attachment_url, "title": "Late", "filename": "a-first.csv"}]},
+            "details": {
+                "attachments": [
+                    {"url": late_attachment_url, "title": "Late", "filename": "a-first.csv"}
+                ]
+            },
         },
         early_attachment_url: b"Alpha,Beta,Gamma\n1,2,3\n",
         late_attachment_url: b"Delta,Epsilon,Zeta\n4,5,6\n",
     }
 
-    monkeypatch.setattr(NEXT_UNKNOWN_MODULE, "iter_crawl_order_sheets", lambda skip_processed=True: iter(()))
+    monkeypatch.setattr(
+        NEXT_UNKNOWN_MODULE, "iter_crawl_order_sheets", lambda skip_processed=True: iter(())
+    )
     runner_spec = importlib.util.spec_from_file_location(
         "muckrake.crawler.gb.gov_transparency.tools.runner",
         Path("datasets/gb/gov_transparency/tools/runner.py"),
@@ -325,7 +343,9 @@ def test_next_unknown_follows_crawler_collection_order(tmp_path, monkeypatch, ca
     sys.modules[runner_spec.name] = runner_module
     runner_spec.loader.exec_module(runner_module)
     monkeypatch.setattr(runner_module, "make_dataset", lambda: dataset)
-    monkeypatch.setattr(NEXT_UNKNOWN_MODULE, "iter_crawl_order_sheets", runner_module.iter_crawl_order_sheets)
+    monkeypatch.setattr(
+        NEXT_UNKNOWN_MODULE, "iter_crawl_order_sheets", runner_module.iter_crawl_order_sheets
+    )
     exit_code = NEXT_UNKNOWN_MODULE.main()
 
     assert exit_code == 0
@@ -333,9 +353,13 @@ def test_next_unknown_follows_crawler_collection_order(tmp_path, monkeypatch, ca
     assert payload["resource"].endswith("z-last.csv")
 
 
-def test_next_unknown_skips_processed_sources_from_incremental_manifest(tmp_path, monkeypatch, capsys):
+def test_next_unknown_skips_processed_sources_from_incremental_manifest(
+    tmp_path, monkeypatch, capsys
+):
     collection_url = MODULE.make_content_api_url("example-collection")
-    publication_early_url = MODULE.make_content_api_url("/government/publications/early-publication")
+    publication_early_url = MODULE.make_content_api_url(
+        "/government/publications/early-publication"
+    )
     publication_late_url = MODULE.make_content_api_url("/government/publications/late-publication")
     early_attachment_url = "https://assets.publishing.service.gov.uk/early.csv"
     late_attachment_url = "https://assets.publishing.service.gov.uk/late.csv"
@@ -356,11 +380,19 @@ def test_next_unknown_skips_processed_sources_from_incremental_manifest(tmp_path
         },
         publication_early_url: {
             "title": "Cabinet Office: ministerial meetings, January to March 2024",
-            "details": {"attachments": [{"url": early_attachment_url, "title": "Early", "filename": "early.csv"}]},
+            "details": {
+                "attachments": [
+                    {"url": early_attachment_url, "title": "Early", "filename": "early.csv"}
+                ]
+            },
         },
         publication_late_url: {
             "title": "Cabinet Office: ministerial meetings, January to March 2024",
-            "details": {"attachments": [{"url": late_attachment_url, "title": "Late", "filename": "late.csv"}]},
+            "details": {
+                "attachments": [
+                    {"url": late_attachment_url, "title": "Late", "filename": "late.csv"}
+                ]
+            },
         },
         early_attachment_url: b"Alpha,Beta,Gamma\n1,2,3\n",
         late_attachment_url: b"Delta,Epsilon,Zeta\n4,5,6\n",
@@ -371,13 +403,13 @@ def test_next_unknown_skips_processed_sources_from_incremental_manifest(tmp_path
             {
                 "version": 1,
                 "sources": {
-                        early_attachment_url: {
-                            "url": early_attachment_url,
-                            "resource_path": str(tmp_path / "resources" / "example.csv"),
-                            "source_signature": f"bytes:{hashlib.sha256(early_bytes).hexdigest()}:{len(early_bytes)}",
-                            "schema_registry_signature": MODULE.schema_registry_signature(),
-                            "status": "processed",
-                            "file_format": "csv",
+                    early_attachment_url: {
+                        "url": early_attachment_url,
+                        "resource_path": str(tmp_path / "resources" / "example.csv"),
+                        "source_signature": f"bytes:{hashlib.sha256(early_bytes).hexdigest()}:{len(early_bytes)}",
+                        "schema_registry_signature": MODULE.schema_registry_signature(),
+                        "status": "processed",
+                        "file_format": "csv",
                         "sheet_fingerprints": [],
                     }
                 },
@@ -386,7 +418,9 @@ def test_next_unknown_skips_processed_sources_from_incremental_manifest(tmp_path
         encoding="utf-8",
     )
 
-    monkeypatch.setattr(NEXT_UNKNOWN_MODULE, "iter_crawl_order_sheets", lambda skip_processed=True: iter(()))
+    monkeypatch.setattr(
+        NEXT_UNKNOWN_MODULE, "iter_crawl_order_sheets", lambda skip_processed=True: iter(())
+    )
     runner_spec = importlib.util.spec_from_file_location(
         "muckrake.crawler.gb.gov_transparency.tools.runner",
         Path("datasets/gb/gov_transparency/tools/runner.py"),
@@ -398,7 +432,9 @@ def test_next_unknown_skips_processed_sources_from_incremental_manifest(tmp_path
     sys.modules[runner_spec.name] = runner_module
     runner_spec.loader.exec_module(runner_module)
     monkeypatch.setattr(runner_module, "make_dataset", lambda: dataset)
-    monkeypatch.setattr(NEXT_UNKNOWN_MODULE, "iter_crawl_order_sheets", runner_module.iter_crawl_order_sheets)
+    monkeypatch.setattr(
+        NEXT_UNKNOWN_MODULE, "iter_crawl_order_sheets", runner_module.iter_crawl_order_sheets
+    )
     exit_code = NEXT_UNKNOWN_MODULE.main()
 
     assert exit_code == 0
@@ -408,7 +444,9 @@ def test_next_unknown_skips_processed_sources_from_incremental_manifest(tmp_path
 
 def test_next_blocker_skips_blocker_clear_sources_from_manifest(tmp_path, monkeypatch, capsys):
     collection_url = MODULE.make_content_api_url("example-collection")
-    publication_early_url = MODULE.make_content_api_url("/government/publications/early-publication")
+    publication_early_url = MODULE.make_content_api_url(
+        "/government/publications/early-publication"
+    )
     publication_late_url = MODULE.make_content_api_url("/government/publications/late-publication")
     early_attachment_url = "https://assets.publishing.service.gov.uk/early.csv"
     late_attachment_url = "https://assets.publishing.service.gov.uk/late.csv"
@@ -429,11 +467,19 @@ def test_next_blocker_skips_blocker_clear_sources_from_manifest(tmp_path, monkey
         },
         publication_early_url: {
             "title": "Cabinet Office: ministerial meetings, January to March 2024",
-            "details": {"attachments": [{"url": early_attachment_url, "title": "Early", "filename": "early.csv"}]},
+            "details": {
+                "attachments": [
+                    {"url": early_attachment_url, "title": "Early", "filename": "early.csv"}
+                ]
+            },
         },
         publication_late_url: {
             "title": "Cabinet Office: ministerial meetings, January to March 2024",
-            "details": {"attachments": [{"url": late_attachment_url, "title": "Late", "filename": "late.csv"}]},
+            "details": {
+                "attachments": [
+                    {"url": late_attachment_url, "title": "Late", "filename": "late.csv"}
+                ]
+            },
         },
         early_attachment_url: b"Minister,Date,Name of organisation or individual,Purpose of meeting\nJane Doe,2024-01-10,Example Org,Policy discussion\n",
         late_attachment_url: b"Alpha,Beta,Gamma\n1,2,3\n",

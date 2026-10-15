@@ -9,9 +9,7 @@ def make_committee(dataset, item):
         "committee", committee_id, reg_nr=committee_id, register="GB-CMTE"
     )
 
-    committee.add(
-        "sourceUrl", f"https://committees.parliament.uk/committee/{committee_id}"
-    )
+    committee.add("sourceUrl", f"https://committees.parliament.uk/committee/{committee_id}")
 
     # assign name
     committee.add("name", item.get("name"))
@@ -201,9 +199,7 @@ def make_evidence_event(dataset, item, type):
     event = dataset.make("Event")
     item_id = item.get("id")
     event.id = dataset.make_id(f"{type}_evidence", item_id)
-    event.add(
-        "sourceUrl", f"https://committees.parliament.uk/{type}evidence/{item_id}/html/"
-    )
+    event.add("sourceUrl", f"https://committees.parliament.uk/{type}evidence/{item_id}/html/")
 
     businesses = item.get("committeeBusinesses") or []
     for business in businesses:
@@ -237,9 +233,7 @@ def make_mp(dataset, member_data):
 
     member = dataset.make("Person")
     member_id = member_data.get("id")
-    member.id = dataset.make_id(
-        "member", member_id, reg_nr=member_id, register="GB-MEMBER"
-    )
+    member.id = dataset.make_id("member", member_id, reg_nr=member_id, register="GB-MEMBER")
     member.add("name", member_data.get("nameDisplayAs"))
     member.add("alias", member_data.get("nameListAs"))
     member.add("topics", "role.pep")

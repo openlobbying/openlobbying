@@ -4,10 +4,13 @@ import json
 from collections import Counter, defaultdict
 from pathlib import Path
 
-from datasets.gb.gov_transparency.fingerprint import detect_header_row, fingerprint, header_signature
+from datasets.gb.gov_transparency.fingerprint import (
+    detect_header_row,
+    fingerprint,
+    header_signature,
+)
 from datasets.gb.gov_transparency.normalise import normalise
 from datasets.gb.gov_transparency.schema import load_schema
-
 
 ROOT = Path("data/datasets/gb_gov_transparency/resources")
 OUT = Path("datasets/gb/gov_transparency/baseline/current_coverage_report.json")

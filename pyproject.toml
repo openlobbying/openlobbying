@@ -26,7 +26,19 @@ muckrake = { path = "../muckrake", editable = true }
 [dependency-groups]
 dev = [
     "pytest>=9.0.3",
+    "ruff>=0.15",
+    "mypy>=1.19",
+    "pre-commit>=4.0",
 ]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+# Unmaintained crawler stubs, kept unchanged (see datasets_parked/README.md).
+extend-exclude = ["datasets_parked"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]

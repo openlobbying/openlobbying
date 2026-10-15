@@ -7,10 +7,17 @@ from datetime import date
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from muckrake.utils.dates import parse_date, parse_day_range, parse_month_value, parse_partial_date, parse_year_hint_date
+from muckrake.utils.dates import (
+    parse_date,
+    parse_day_range,
+    parse_month_value,
+    parse_partial_date,
+    parse_year_hint_date,
+)
 
 if TYPE_CHECKING:
-    from .schema import DateRule as DateRuleT, Schema as SchemaT
+    from .schema import DateRule as DateRuleT
+    from .schema import Schema as SchemaT
 
 try:
     from .schema import DateRule, Schema
@@ -31,7 +38,7 @@ except ImportError:
 
 def resolve_date(
     row: list[str],
-    schema: "SchemaT",
+    schema: SchemaT,
     period_start: date | None,
     period_end: date | None,
 ) -> dict[str, str]:
@@ -89,7 +96,7 @@ def resolve_date(
 
 def parse_value(
     raw: str,
-    rules: list["DateRuleT"],
+    rules: list[DateRuleT],
     period_start: date | None,
     period_end: date | None,
 ) -> dict[str, str] | None:
@@ -102,7 +109,7 @@ def parse_value(
 
 def parse_with_rule(
     raw: str,
-    rule: "DateRuleT",
+    rule: DateRuleT,
     period_start: date | None,
     period_end: date | None,
 ) -> dict[str, str] | None:

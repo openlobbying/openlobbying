@@ -1,17 +1,15 @@
+import csv
+import os
+import re
+import time
+
 import requests
 from bs4 import BeautifulSoup
-import re
-import csv
-import time
-import os
+
 
 def extract_details(soup):
-    details = {
-        "address": "",
-        "company_number": "",
-        "clients": ""
-    }
-    
+    details = {"address": "", "company_number": "", "clients": ""}
+
     # 1. Address
     # Structure: <h3>Address</h3> <p>line 1<br>line 2<br>...</p>
     address_h3 = soup.find("h3", string=re.compile(r"Address", re.I))
@@ -35,7 +33,9 @@ def extract_details(soup):
             details["company_number"] = next_sibling.strip()
         else:
             # Fallback check next elements
-            details["company_number"] = company_label.get_text(strip=True).replace("Company Number", "").strip()
+            details["company_number"] = (
+                company_label.get_text(strip=True).replace("Company Number", "").strip()
+            )
 
     # 3. Client List
     # Structure: table.clrDataTable under "Current client list"
@@ -54,39 +54,42 @@ def extract_details(soup):
                     text = col.get_text(strip=True)
                     if text and text.lower() != "client":
                         clients.append(text)
-    
+
     details["clients"] = "; ".join(clients)
-    
+
     return details
+
 
 def scrape_profiles(limit=None):
     if not os.path.exists("lobbyists.csv"):
         print("[!] lobbyists.csv not found. Run the initial scraper first.")
         return
 
-    with open("lobbyists.csv", "r") as f:
+    with open("lobbyists.csv") as f:
         reader = list(csv.DictReader(f))
-        
+
     if limit:
         reader = reader[:limit]
-        
+
     session = requests.Session()
-    session.headers.update({
-        "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-    })
+    session.headers.update(
+        {
+            "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        }
+    )
 
     results = []
     total = len(reader)
-    
+
     for i, row in enumerate(reader):
         name = row["name"]
         url = row["profile_url"]
-        
+
         if not url:
             results.append({**row, "address": "", "company_number": "", "clients": ""})
             continue
-            
-        print(f"[*] [{i+1}/{total}] Scraping details for: {name}")
+
+        print(f"[*] [{i + 1}/{total}] Scraping details for: {name}")
         try:
             r = session.get(url)
             if r.status_code == 200:
@@ -99,8 +102,8 @@ def scrape_profiles(limit=None):
         except Exception as e:
             print(f"    [!] Error: {e}")
             results.append({**row, "address": "ERROR", "company_number": "", "clients": ""})
-            
-        time.sleep(0.5) # Be kind
+
+        time.sleep(0.5)  # Be kind
 
     # Save to expanded CSV
     output_file = "lobbyists_detailed.csv"
@@ -111,6 +114,7 @@ def scrape_profiles(limit=None):
             writer.writeheader()
             writer.writerows(results)
         print(f"[*] Done! Saved {len(results)} detailed records to {output_file}")
+
 
 if __name__ == "__main__":
     # Test with first 5 profiles

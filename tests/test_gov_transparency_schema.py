@@ -1,8 +1,7 @@
-from pathlib import Path
 import importlib.util
 import json
 import sys
-
+from pathlib import Path
 
 SCHEMA_PATH = Path("datasets/gb/gov_transparency/schema.py")
 SCHEMA_SPEC = importlib.util.spec_from_file_location("gov_transparency_schema", SCHEMA_PATH)
@@ -17,7 +16,9 @@ schema_from_dict = SCHEMA_MODULE.schema_from_dict
 validate_schema = SCHEMA_MODULE.validate_schema
 
 NORMALISE_PATH = Path("datasets/gb/gov_transparency/normalise.py")
-NORMALISE_SPEC = importlib.util.spec_from_file_location("gov_transparency_normalise_for_schema", NORMALISE_PATH)
+NORMALISE_SPEC = importlib.util.spec_from_file_location(
+    "gov_transparency_normalise_for_schema", NORMALISE_PATH
+)
 assert NORMALISE_SPEC is not None
 assert NORMALISE_SPEC.loader is not None
 NORMALISE_MODULE = importlib.util.module_from_spec(NORMALISE_SPEC)
@@ -79,7 +80,10 @@ def test_validate_schema_accepts_valid_sheet():
     schema = schema_from_dict(meetings_schema_dict())
     sheet = NormalisedSheet(
         name="Meetings",
-        rows=[["Minister", "Date", "Purpose of meeting"], ["Jane Doe", "12/01/2024", "Example meeting"]],
+        rows=[
+            ["Minister", "Date", "Purpose of meeting"],
+            ["Jane Doe", "12/01/2024", "Example meeting"],
+        ],
     )
 
     validate_schema(schema, sheet)
@@ -188,7 +192,10 @@ def test_validate_schema_accepts_provenance_period_rows():
             "mapping": {"official_name": 0, "summary": 1},
         }
     )
-    sheet = NormalisedSheet(name="Gifts", rows=[["Minister", "Gift"], ["Jane Doe", "Nil return"], ["John Doe", "Nil return"]])
+    sheet = NormalisedSheet(
+        name="Gifts",
+        rows=[["Minister", "Gift"], ["Jane Doe", "Nil return"], ["John Doe", "Nil return"]],
+    )
 
     validate_schema(schema, sheet)
 
@@ -204,15 +211,32 @@ def test_validate_schema_accepts_nil_only_data_rows_when_date_column_has_nil_mar
             "date": {
                 "mode": "column",
                 "column": 1,
-                "parsers": [{"type": "iso_datetime", "precision": "day"}, {"type": "month_name_from_period", "precision": "month"}],
+                "parsers": [
+                    {"type": "iso_datetime", "precision": "day"},
+                    {"type": "month_name_from_period", "precision": "month"},
+                ],
             },
-            "mapping": {"official_name": 0, "summary": 2, "counterparty_name": 4, "amount": 5, "outcome_text": 6},
+            "mapping": {
+                "official_name": 0,
+                "summary": 2,
+                "counterparty_name": 4,
+                "amount": 5,
+                "outcome_text": 6,
+            },
         }
     )
     sheet = NormalisedSheet(
         name="Gifts",
         rows=[
-            ["Minister", "Date", "Gift", "Given or received", "Who gift was given to or received from", "Value", "Outcome"],
+            [
+                "Minister",
+                "Date",
+                "Gift",
+                "Given or received",
+                "Who gift was given to or received from",
+                "Value",
+                "Outcome",
+            ],
             ["Anti-Corruption Champion - Nil return", "-", "-", "-", "-", "-", "-"],
         ],
     )
@@ -231,7 +255,10 @@ def test_validate_schema_rejects_missing_data_rows():
             "mapping": {"official_name": 0, "summary": 2},
         }
     )
-    sheet = NormalisedSheet(name="Meetings", rows=[["Minister", "Date", "Purpose of meeting"], ["", "", ""], ["", "", ""]])
+    sheet = NormalisedSheet(
+        name="Meetings",
+        rows=[["Minister", "Date", "Purpose of meeting"], ["", "", ""], ["", "", ""]],
+    )
 
     try:
         validate_schema(schema, sheet)
@@ -259,16 +286,28 @@ def test_schema_from_dict_adds_default_nil_markers_for_data_sheets():
 
 def test_schema_from_dict_requires_activity_type_for_data_sheets():
     try:
-        schema_from_dict({"fingerprint": "abc123", "sheet_type": "data", "mapping": {"official_name": 0}})
+        schema_from_dict(
+            {"fingerprint": "abc123", "sheet_type": "data", "mapping": {"official_name": 0}}
+        )
     except ValueError as exc:
         assert "activity_type" in str(exc)
     else:
-        raise AssertionError("Expected schema_from_dict to reject data schemas without activity_type")
+        raise AssertionError(
+            "Expected schema_from_dict to reject data schemas without activity_type"
+        )
 
 
 def test_schema_from_dict_rejects_unknown_fields():
     try:
-        schema_from_dict({"fingerprint": "abc123", "sheet_type": "data", "activity_type": "meetings", "mapping": {"official_name": 0}, "mystery": True})
+        schema_from_dict(
+            {
+                "fingerprint": "abc123",
+                "sheet_type": "data",
+                "activity_type": "meetings",
+                "mapping": {"official_name": 0},
+                "mystery": True,
+            }
+        )
     except ValueError as exc:
         assert "Unknown schema fields" in str(exc)
     else:
@@ -277,7 +316,14 @@ def test_schema_from_dict_rejects_unknown_fields():
 
 def test_schema_from_dict_rejects_unsupported_activity_type():
     try:
-        schema_from_dict({"fingerprint": "abc123", "sheet_type": "data", "activity_type": "other", "mapping": {"official_name": 0}})
+        schema_from_dict(
+            {
+                "fingerprint": "abc123",
+                "sheet_type": "data",
+                "activity_type": "other",
+                "mapping": {"official_name": 0},
+            }
+        )
     except ValueError as exc:
         assert "Unsupported activity_type" in str(exc)
     else:
@@ -295,15 +341,26 @@ def test_schema_from_dict_requires_reason_for_non_data_sheets():
 
 def test_schema_from_dict_rejects_activity_type_for_notes_sheets():
     try:
-        schema_from_dict({"fingerprint": "abc123", "sheet_type": "notes", "reason": "Explanatory notes sheet.", "activity_type": "meetings"})
+        schema_from_dict(
+            {
+                "fingerprint": "abc123",
+                "sheet_type": "notes",
+                "reason": "Explanatory notes sheet.",
+                "activity_type": "meetings",
+            }
+        )
     except ValueError as exc:
         assert "activity_type" in str(exc)
     else:
-        raise AssertionError("Expected schema_from_dict to reject non-data schemas with activity_type")
+        raise AssertionError(
+            "Expected schema_from_dict to reject non-data schemas with activity_type"
+        )
 
 
 def test_schema_from_dict_accepts_reason_for_notes_sheets():
-    schema = schema_from_dict({"fingerprint": "abc123", "sheet_type": "notes", "reason": "Explanatory notes sheet."})
+    schema = schema_from_dict(
+        {"fingerprint": "abc123", "sheet_type": "notes", "reason": "Explanatory notes sheet."}
+    )
 
     assert schema.reason == "Explanatory notes sheet."
     assert schema.activity_type is None

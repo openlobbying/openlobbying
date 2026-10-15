@@ -1,7 +1,7 @@
-from datetime import date
-from pathlib import Path
 import importlib.util
 import sys
+from datetime import date
+from pathlib import Path
 
 from org_id import make_hashed_id
 
@@ -17,9 +17,15 @@ def load_module(name: str, relative_path: str):
     return module
 
 
-entities_module = load_module("gov_transparency_entities", "datasets/gb/gov_transparency/entities.py")
-schema_module = load_module("gov_transparency_schema_for_entities", "datasets/gb/gov_transparency/schema.py")
-types_module = load_module("gov_transparency_types_for_entities", "datasets/gb/gov_transparency/types.py")
+entities_module = load_module(
+    "gov_transparency_entities", "datasets/gb/gov_transparency/entities.py"
+)
+schema_module = load_module(
+    "gov_transparency_schema_for_entities", "datasets/gb/gov_transparency/schema.py"
+)
+types_module = load_module(
+    "gov_transparency_types_for_entities", "datasets/gb/gov_transparency/types.py"
+)
 
 emit_entities = entities_module.emit_entities
 schema_from_dict = schema_module.schema_from_dict
@@ -32,8 +38,8 @@ class DummyDataset:
         self.prefix = "gb-gov"
 
     def make(self, schema: str):
-        from followthemoney.statement.entity import StatementEntity
         from followthemoney import Dataset as FTMDataset
+        from followthemoney.statement.entity import StatementEntity
 
         if not hasattr(self, "ftm"):
             self.ftm = FTMDataset.make({"name": "gb_gov_transparency", "prefix": self.prefix})
@@ -60,7 +66,14 @@ def make_provenance(collection_type: str, url: str) -> Provenance:
 
 def test_emit_meeting_entities_creates_person_public_body_employment_legal_entity_and_meeting():
     dataset = DummyDataset()
-    schema = schema_from_dict({"fingerprint": "abc", "sheet_type": "data", "activity_type": "meetings", "mapping": {"official_name": 0}})
+    schema = schema_from_dict(
+        {
+            "fingerprint": "abc",
+            "sheet_type": "data",
+            "activity_type": "meetings",
+            "mapping": {"official_name": 0},
+        }
+    )
     provenance = make_provenance("meetings", "https://example.test/meetings.csv")
     row = {
         "official_name": "Jane Doe",
@@ -92,7 +105,14 @@ def test_emit_meeting_entities_creates_person_public_body_employment_legal_entit
 
 def test_emit_hospitality_entities_creates_hospitality_payment_with_participant():
     dataset = DummyDataset()
-    schema = schema_from_dict({"fingerprint": "abc", "sheet_type": "data", "activity_type": "hospitality", "mapping": {"official_name": 0}})
+    schema = schema_from_dict(
+        {
+            "fingerprint": "abc",
+            "sheet_type": "data",
+            "activity_type": "hospitality",
+            "mapping": {"official_name": 0},
+        }
+    )
     provenance = make_provenance("hospitality", "https://example.test/hospitality.csv")
     row = {
         "official_name": "Jane Doe",
@@ -118,7 +138,14 @@ def test_emit_hospitality_entities_creates_hospitality_payment_with_participant(
 
 def test_emit_travel_entities_creates_trip():
     dataset = DummyDataset()
-    schema = schema_from_dict({"fingerprint": "abc", "sheet_type": "data", "activity_type": "travel", "mapping": {"official_name": 0}})
+    schema = schema_from_dict(
+        {
+            "fingerprint": "abc",
+            "sheet_type": "data",
+            "activity_type": "travel",
+            "mapping": {"official_name": 0},
+        }
+    )
     provenance = make_provenance("travel", "https://example.test/travel.csv")
     row = {
         "official_name": "Jane Doe",
@@ -146,7 +173,14 @@ def test_emit_travel_entities_creates_trip():
 
 def test_emit_gift_entities_creates_gift_with_person_and_public_body_as_beneficiaries():
     dataset = DummyDataset()
-    schema = schema_from_dict({"fingerprint": "abc", "sheet_type": "data", "activity_type": "gifts", "mapping": {"official_name": 0}})
+    schema = schema_from_dict(
+        {
+            "fingerprint": "abc",
+            "sheet_type": "data",
+            "activity_type": "gifts",
+            "mapping": {"official_name": 0},
+        }
+    )
     provenance = make_provenance("gifts", "https://example.test/gifts.csv")
     row = {
         "official_name": "Jane Doe",
@@ -177,7 +211,14 @@ def test_emit_gift_entities_creates_gift_with_person_and_public_body_as_benefici
 
 def test_emit_entities_deduplicates_context_entities_across_rows():
     dataset = DummyDataset()
-    schema = schema_from_dict({"fingerprint": "abc", "sheet_type": "data", "activity_type": "meetings", "mapping": {"official_name": 0}})
+    schema = schema_from_dict(
+        {
+            "fingerprint": "abc",
+            "sheet_type": "data",
+            "activity_type": "meetings",
+            "mapping": {"official_name": 0},
+        }
+    )
     provenance = make_provenance("meetings", "https://example.test/meetings.csv")
     first = {
         "official_name": "Jane Doe",

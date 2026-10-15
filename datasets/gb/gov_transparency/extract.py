@@ -28,13 +28,17 @@ except ImportError:
     sys.modules[common_spec.name] = common_module
     common_spec.loader.exec_module(common_module)
     resolve_date = common_module.load_sibling_module(__file__, __name__, "date_rules").resolve_date
-    NormalisedSheet = common_module.load_sibling_module(__file__, __name__, "normalise").NormalisedSheet
+    NormalisedSheet = common_module.load_sibling_module(
+        __file__, __name__, "normalise"
+    ).NormalisedSheet
     evaluate_rows = common_module.load_sibling_module(__file__, __name__, "rows").evaluate_rows
     Schema = common_module.load_sibling_module(__file__, __name__, "schema").Schema
     Provenance = common_module.load_sibling_module(__file__, __name__, "types").Provenance
 
 
-def extract(sheet: "NormalisedSheetT", schema: "SchemaT", provenance: "ProvenanceT") -> list[dict[str, str | int]]:
+def extract(
+    sheet: NormalisedSheetT, schema: SchemaT, provenance: ProvenanceT
+) -> list[dict[str, str | int]]:
     if schema.sheet_type != "data":
         return []
 
@@ -44,14 +48,16 @@ def extract(sheet: "NormalisedSheetT", schema: "SchemaT", provenance: "Provenanc
         record: dict[str, str | int] = dict(row_outcome.mapped)
         if schema.subject.source != "column":
             record["official_name"] = resolve_subject_name(schema, provenance, sheet)
-        record.update(resolve_date(row_outcome.values, schema, provenance.period_start, provenance.period_end))
+        record.update(
+            resolve_date(row_outcome.values, schema, provenance.period_start, provenance.period_end)
+        )
         record["row_index"] = row_outcome.row_index
         record["sheet_name"] = sheet.name
         results.append(record)
     return results
 
 
-def resolve_subject_name(schema: "SchemaT", provenance: "ProvenanceT", sheet: "NormalisedSheetT") -> str:
+def resolve_subject_name(schema: SchemaT, provenance: ProvenanceT, sheet: NormalisedSheetT) -> str:
     if schema.subject.source == "value":
         if schema.subject.value is None:
             raise ValueError("Schema subject.source='value' requires a value")

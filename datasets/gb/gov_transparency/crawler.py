@@ -10,9 +10,8 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 from urllib.parse import urljoin, urlparse
 
-from requests import HTTPError
-
 from muckrake.dataset import Dataset
+from requests import HTTPError
 
 if TYPE_CHECKING:
     from .normalise import NormalisedSheet as NormalisedSheetT
@@ -103,11 +102,17 @@ def iter_collection_configs(dataset: Dataset):
             raise ValueError("each gov-transparency department must define a non-empty name")
         collection_urls = department.get("collection_urls", [])
         if not isinstance(collection_urls, list):
-            raise ValueError(f"gov-transparency department '{department_name}' must define collection_urls as a list")
+            raise ValueError(
+                f"gov-transparency department '{department_name}' must define collection_urls as a list"
+            )
         for collection_url in collection_urls:
             if not isinstance(collection_url, str) or not collection_url.strip():
-                raise ValueError(f"gov-transparency department '{department_name}' collection_urls must contain only strings")
-            yield CollectionConfig(department=department_name, collection_url=collection_url.strip())
+                raise ValueError(
+                    f"gov-transparency department '{department_name}' collection_urls must contain only strings"
+                )
+            yield CollectionConfig(
+                department=department_name, collection_url=collection_url.strip()
+            )
 
 
 def make_content_api_url(value: str) -> str:
@@ -190,7 +195,7 @@ def schema_registry_signature() -> str:
     return digest.hexdigest()
 
 
-def make_source_key(provenance: "ProvenanceT") -> str:
+def make_source_key(provenance: ProvenanceT) -> str:
     return provenance.url
 
 
@@ -201,7 +206,9 @@ def make_source_signature(resource_path: Path | None, data: bytes | None) -> str
     return f"bytes:{digest}:{len(data)}"
 
 
-def load_source_reference(dataset: Dataset, filename: str, provenance: "ProvenanceT") -> SourceReference:
+def load_source_reference(
+    dataset: Dataset, filename: str, provenance: ProvenanceT
+) -> SourceReference:
     data, resource_path, fetch_status = fetch_source_bytes(dataset, filename, provenance)
     return SourceReference(
         data=data,
@@ -213,7 +220,7 @@ def load_source_reference(dataset: Dataset, filename: str, provenance: "Provenan
 
 def should_skip_source(
     manifest: dict[str, Any],
-    provenance: "ProvenanceT",
+    provenance: ProvenanceT,
     source_reference: SourceReference,
 ) -> bool:
     source_entry = manifest.get("sources", {}).get(make_source_key(provenance))
@@ -259,7 +266,7 @@ def build_provenance(
     publication: dict,
     attachment_title: str,
     source_url: str,
-) -> "ProvenanceT":
+) -> ProvenanceT:
     title = publication_title(publication, publication_path)
     period_start, period_end = parse_period(title)
     if period_start is None and period_end is None:
@@ -275,14 +282,20 @@ def build_provenance(
     )
 
 
-def iter_publication_sources(department: str, collection_url: str, publication_path: str, publication: dict):
+def iter_publication_sources(
+    department: str, collection_url: str, publication_path: str, publication: dict
+):
     details = publication.get("details", {})
     if not isinstance(details, dict):
-        raise ValueError(f"Publication API response for {publication_path} must define details as an object")
+        raise ValueError(
+            f"Publication API response for {publication_path} must define details as an object"
+        )
 
     attachments = details.get("attachments", [])
     if not isinstance(attachments, list):
-        raise ValueError(f"Publication API response for {publication_path} must define details.attachments as a list")
+        raise ValueError(
+            f"Publication API response for {publication_path} must define details.attachments as a list"
+        )
 
     yielded_attachment = False
     for attachment in attachments:
@@ -296,13 +309,16 @@ def iter_publication_sources(department: str, collection_url: str, publication_p
         attachment_title = attachment.get("title")
         if not isinstance(attachment_title, str) or not attachment_title.strip():
             attachment_title = get_attachment_filename(attachment, publication_path)
-        yield get_attachment_filename(attachment, publication_path), build_provenance(
-            department,
-            collection_url,
-            publication_path,
-            publication,
-            attachment_title.strip(),
-            source_url,
+        yield (
+            get_attachment_filename(attachment, publication_path),
+            build_provenance(
+                department,
+                collection_url,
+                publication_path,
+                publication,
+                attachment_title.strip(),
+                source_url,
+            ),
         )
 
     if yielded_attachment:
@@ -311,17 +327,22 @@ def iter_publication_sources(department: str, collection_url: str, publication_p
     publication_url = urljoin(GOVUK_URL, publication_path)
     title = publication_title(publication, publication_path)
     publication_slug = Path(publication_path.rstrip("/")).name or "publication"
-    yield f"{publication_slug}.html", build_provenance(
-        department,
-        collection_url,
-        publication_path,
-        publication,
-        title,
-        publication_url,
+    yield (
+        f"{publication_slug}.html",
+        build_provenance(
+            department,
+            collection_url,
+            publication_path,
+            publication,
+            title,
+            publication_url,
+        ),
     )
 
 
-def fetch_source_bytes(dataset: Dataset, filename: str, provenance: "ProvenanceT") -> tuple[bytes | None, Path | None, str]:
+def fetch_source_bytes(
+    dataset: Dataset, filename: str, provenance: ProvenanceT
+) -> tuple[bytes | None, Path | None, str]:
     suffix = Path(filename).suffix.lower()
     if suffix in {".html", ".htm"}:
         text = dataset.fetch_text(provenance.url, cache_days=RESOURCE_CACHE_DAYS)
@@ -330,7 +351,13 @@ def fetch_source_bytes(dataset: Dataset, filename: str, provenance: "ProvenanceT
         return text.encode("utf-8"), None, "normalised"
 
     resource_name = "/".join(
-        part for part in [provenance.collection_type, Path(urlparse(provenance.url).path).parent.name, filename] if part
+        part
+        for part in [
+            provenance.collection_type,
+            Path(urlparse(provenance.url).path).parent.name,
+            filename,
+        ]
+        if part
     )
     path = fetch_resource_or_warn(dataset, resource_name, provenance.url)
     if path is None:
@@ -340,9 +367,9 @@ def fetch_source_bytes(dataset: Dataset, filename: str, provenance: "ProvenanceT
 
 def report_unknown_fingerprint(
     dataset: Dataset,
-    provenance: "ProvenanceT",
+    provenance: ProvenanceT,
     resource_path: Path | None,
-    sheet: "NormalisedSheetT",
+    sheet: NormalisedSheetT,
     sheet_fingerprint: str,
 ) -> None:
     dataset.log.warning("UNKNOWN FINGERPRINT: %s", sheet_fingerprint)
@@ -369,7 +396,9 @@ def format_sheet_preview(rows: list[list[str]]) -> list[str]:
     column_widths = [max(len(row[index]) for row in padded) for index in range(width)]
     output = []
     for row in padded:
-        output.append(" | ".join(row[index].ljust(column_widths[index]) for index in range(width)).rstrip())
+        output.append(
+            " | ".join(row[index].ljust(column_widths[index]) for index in range(width)).rstrip()
+        )
     return output
 
 
@@ -401,7 +430,9 @@ def crawl(dataset: Dataset):
     try:
         for collection in iter_collection_configs(dataset):
             for filename, provenance in iter_collection_sources(dataset, collection):
-                dataset.run_unit(provenance.url, process_source, dataset, filename, provenance, stats, trace)
+                dataset.run_unit(
+                    provenance.url, process_source, dataset, filename, provenance, stats, trace
+                )
     finally:
         trace.close()
 
@@ -417,41 +448,59 @@ def crawl(dataset: Dataset):
 
 
 def iter_collection_sources(dataset: Dataset, collection: CollectionConfig):
-    collection_data = fetch_json_or_warn(dataset, make_content_api_url(collection.collection_url), "collection")
+    collection_data = fetch_json_or_warn(
+        dataset, make_content_api_url(collection.collection_url), "collection"
+    )
     if collection_data is None:
         return
     if not isinstance(collection_data, dict):
-        raise ValueError(f"Expected a JSON object from GOV.UK collection API: {collection.collection_url}")
+        raise ValueError(
+            f"Expected a JSON object from GOV.UK collection API: {collection.collection_url}"
+        )
 
     links = collection_data.get("links", {})
     if not isinstance(links, dict):
-        raise ValueError(f"Collection API response for {collection.collection_url} must define links as an object")
+        raise ValueError(
+            f"Collection API response for {collection.collection_url} must define links as an object"
+        )
     documents = links.get("documents", [])
     if not isinstance(documents, list):
-        raise ValueError(f"Collection API response for {collection.collection_url} must define links.documents as a list")
+        raise ValueError(
+            f"Collection API response for {collection.collection_url} must define links.documents as a list"
+        )
 
     for document in documents:
         if not isinstance(document, dict):
-            raise ValueError(f"Collection document entry must be a mapping: {collection.collection_url}")
+            raise ValueError(
+                f"Collection document entry must be a mapping: {collection.collection_url}"
+            )
         publication_path = document.get("base_path")
         if not isinstance(publication_path, str) or not publication_path.strip():
-            raise ValueError(f"Collection API document is missing a base_path: {collection.collection_url}")
+            raise ValueError(
+                f"Collection API document is missing a base_path: {collection.collection_url}"
+            )
 
-        publication = fetch_json_or_warn(dataset, make_content_api_url(publication_path), f"publication {publication_path}")
+        publication = fetch_json_or_warn(
+            dataset, make_content_api_url(publication_path), f"publication {publication_path}"
+        )
         if publication is None:
             continue
         if not isinstance(publication, dict):
-            raise ValueError(f"Expected a JSON object from GOV.UK publication API: {publication_path}")
+            raise ValueError(
+                f"Expected a JSON object from GOV.UK publication API: {publication_path}"
+            )
 
-        yield from iter_publication_sources(collection.department, collection.collection_url, publication_path, publication)
+        yield from iter_publication_sources(
+            collection.department, collection.collection_url, publication_path, publication
+        )
 
 
 def process_source(
     dataset: Dataset,
     filename: str,
-    provenance: "ProvenanceT",
+    provenance: ProvenanceT,
     stats: dict[str, int],
-    trace: "TraceWriterT",
+    trace: TraceWriterT,
 ) -> None:
     source_reference = load_source_reference(dataset, filename, provenance)
     if source_reference.data is None:
@@ -459,7 +508,14 @@ def process_source(
 
     file_format = detect_file_format(source_reference.data, filename)
     if file_format is None:
-        write_source_trace(trace, provenance, filename, source_reference.resource_path, file_format=None, status="unsupported")
+        write_source_trace(
+            trace,
+            provenance,
+            filename,
+            source_reference.resource_path,
+            file_format=None,
+            status="unsupported",
+        )
         return
 
     try:
@@ -478,23 +534,32 @@ def process_source(
 
     status = "empty" if not sheets else source_reference.fetch_status
     if not sheets:
-        write_source_trace(trace, provenance, filename, source_reference.resource_path, file_format=file_format, status=status)
+        write_source_trace(
+            trace,
+            provenance,
+            filename,
+            source_reference.resource_path,
+            file_format=file_format,
+            status=status,
+        )
         return
 
     stats["sources_processed"] += 1
     stats["sheets_processed"] += len(sheets)
     for sheet in sheets:
-        process_sheet(dataset, sheet, provenance, source_reference.resource_path, file_format, stats, trace)
+        process_sheet(
+            dataset, sheet, provenance, source_reference.resource_path, file_format, stats, trace
+        )
 
 
 def process_sheet(
     dataset: Dataset,
-    sheet: "NormalisedSheetT",
-    provenance: "ProvenanceT",
+    sheet: NormalisedSheetT,
+    provenance: ProvenanceT,
     resource_path: Path | None,
     file_format: str,
     stats: dict[str, int],
-    trace: "TraceWriterT",
+    trace: TraceWriterT,
 ) -> None:
     sheet_fingerprint = fingerprint(sheet)
     header_row_index = detect_header_row(sheet)
@@ -559,7 +624,7 @@ def process_sheet(
     trace_record.update(
         {
             "status": "validated",
-            "schema_path": str((Path(__file__).with_name("schemas") / f"{sheet_fingerprint}.json")),
+            "schema_path": str(Path(__file__).with_name("schemas") / f"{sheet_fingerprint}.json"),
             "sheet_type": schema.sheet_type,
             "activity_type": schema.activity_type,
             "row_counts": {
@@ -580,8 +645,8 @@ def process_sheet(
 
 
 def write_source_trace(
-    trace: "TraceWriterT",
-    provenance: "ProvenanceT",
+    trace: TraceWriterT,
+    provenance: ProvenanceT,
     filename: str,
     resource_path: Path | None,
     file_format: str | None,

@@ -1,16 +1,16 @@
 import csv
+import zipfile
 from dataclasses import dataclass
 from io import BytesIO, StringIO
 from pathlib import Path
 from typing import Any, Literal, cast
-import zipfile
 
+import xlrd
 from bs4 import BeautifulSoup
 from odf.opendocument import load as load_odf
 from odf.table import CoveredTableCell, Table, TableCell, TableRow
 from odf.teletype import extractText
 from openpyxl import load_workbook
-import xlrd
 
 NormalisedFormat = Literal["csv", "html", "xls", "xlsx", "xlsm", "ods"]
 

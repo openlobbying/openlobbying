@@ -25,7 +25,9 @@ except ImportError:
     common_module = importlib.util.module_from_spec(common_spec)
     sys.modules[common_spec.name] = common_module
     common_spec.loader.exec_module(common_module)
-    NormalisedSheet = common_module.load_sibling_module(__file__, __name__, "normalise").NormalisedSheet
+    NormalisedSheet = common_module.load_sibling_module(
+        __file__, __name__, "normalise"
+    ).NormalisedSheet
 
 MONTH_NAMES = {
     "january",
@@ -68,6 +70,7 @@ def _remember_header_row(cache_key: tuple[tuple[str, ...], ...], row_index: int)
     _HEADER_ROW_CACHE[cache_key] = row_index
     return row_index
 
+
 DATE_FORMATS = (
     "%d/%m/%Y",
     "%d-%m-%Y",
@@ -94,7 +97,7 @@ class HeaderMatch:
     score: int
 
 
-def detect_header_row(sheet: "NormalisedSheetT") -> int:
+def detect_header_row(sheet: NormalisedSheetT) -> int:
     cache_key = tuple(tuple(row) for row in sheet.rows)
     cached = _HEADER_ROW_CACHE.get(cache_key)
     if cached is not None:
@@ -123,25 +126,31 @@ def detect_header_row(sheet: "NormalisedSheetT") -> int:
     return _remember_header_row(cache_key, fallback_row or 0)
 
 
-def fingerprint(sheet: "NormalisedSheetT") -> str:
+def fingerprint(sheet: NormalisedSheetT) -> str:
     header_row = sheet.rows[detect_header_row(sheet)] if sheet.rows else []
     parts = [normalise_header_cell(cell) for cell in header_row if normalise_header_cell(cell)]
     key = "|".join(parts)
     return hashlib.sha256(key.encode("utf-8")).hexdigest()[:16]
 
 
-def header_signature(sheet: "NormalisedSheetT") -> list[str]:
+def header_signature(sheet: NormalisedSheetT) -> list[str]:
     header_row = sheet.rows[detect_header_row(sheet)] if sheet.rows else []
     return [normalise_header_cell(cell) for cell in header_row if normalise_header_cell(cell)]
 
 
-def score_header_candidate(row: list[str], non_empty_rows: list[list[str]], row_index: int) -> int | None:
+def score_header_candidate(
+    row: list[str], non_empty_rows: list[list[str]], row_index: int
+) -> int | None:
     non_empty_cells = non_empty_rows[row_index]
     if not non_empty_cells:
         return None
     if is_disclaimer_row(non_empty_cells):
         return None
-    if is_uniform_row(non_empty_cells) and not looks_like_title_row(non_empty_cells) and not looks_like_header_row(non_empty_cells):
+    if (
+        is_uniform_row(non_empty_cells)
+        and not looks_like_title_row(non_empty_cells)
+        and not looks_like_header_row(non_empty_cells)
+    ):
         return None
 
     score = 0
@@ -168,7 +177,9 @@ def score_header_candidate(row: list[str], non_empty_rows: list[list[str]], row_
     if next_rows:
         data_like_next_rows = sum(1 for candidate in next_rows if looks_like_data_row(candidate))
         score += data_like_next_rows * 4
-        header_like_next_rows = sum(1 for candidate in next_rows if looks_like_header_row(candidate))
+        header_like_next_rows = sum(
+            1 for candidate in next_rows if looks_like_header_row(candidate)
+        )
         score -= header_like_next_rows * 3
 
     if label_like == 0:
@@ -176,7 +187,9 @@ def score_header_candidate(row: list[str], non_empty_rows: list[list[str]], row_
     return score
 
 
-def following_non_empty_rows(non_empty_rows: list[list[str]], row_index: int, limit: int) -> list[list[str]]:
+def following_non_empty_rows(
+    non_empty_rows: list[list[str]], row_index: int, limit: int
+) -> list[list[str]]:
     candidates: list[list[str]] = []
     for non_empty_cells in non_empty_rows[row_index + 1 :]:
         if not non_empty_cells:
@@ -251,7 +264,9 @@ def looks_like_label(value: str) -> bool:
         return False
     if looks_like_pure_data(text):
         return False
-    if len(text) > 80 and not re.search(r"\b(and|or|from|to|type|transport|accompanied|spouse|family|friend)\b", text):
+    if len(text) > 80 and not re.search(
+        r"\b(and|or|from|to|type|transport|accompanied|spouse|family|friend)\b", text
+    ):
         return False
     if re.search(
         r"\b(name|names|date|dates|period|purpose|purposes|meeting|meetings|gift|gifts|given|received|hospitality|travel|travels|organization|organizations|minister|ministers|advisor|advisors|value|values|outcome|outcomes|destination|destinations|cost|costs|media|role|roles|employment|outside_employment|official|officials|person|people|guest|guests|from|to|from/to|type|transport|accompanied|spouse|family|friend|start|end)\b",

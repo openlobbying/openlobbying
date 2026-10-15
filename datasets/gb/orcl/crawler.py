@@ -1,18 +1,15 @@
-import re
 import json
+import re
 from urllib.parse import parse_qs, urlparse
 
 import requests
 from bs4 import BeautifulSoup
-
 from muckrake.dataset import Dataset
 from muckrake.utils import normalize_gb_coh
 
 BASE_URL = "https://orcl.my.site.com"
 SEARCH_URL = "https://orcl.my.site.com/CLR_Search"
-AJAX_SUBMIT_RE = re.compile(
-    r"A4J\.AJAX\.Submit\('([^']+)'.*?'parameters':\{'([^']+)':'([^']+)'\}"
-)
+AJAX_SUBMIT_RE = re.compile(r"A4J\.AJAX\.Submit\('([^']+)'.*?'parameters':\{'([^']+)':'([^']+)'\}")
 AJAX_HEADERS = {
     "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
     "X-Requested-With": "XMLHttpRequest",
@@ -93,7 +90,7 @@ def crawl(context: Dataset):
     )
 
     # Initial Page
-    context.log.info(f"Fetching Page 1...")
+    context.log.info("Fetching Page 1...")
     res = session.get(SEARCH_URL, timeout=60)
     res.raise_for_status()
     soup = BeautifulSoup(res.text, "html.parser")
@@ -226,7 +223,7 @@ def process_lobbyist(context: Dataset, session: requests.Session, item):
                     url,
                     headers=dict(session.headers),
                 )
-                with open(path, "r", encoding="utf-8") as fh:
+                with open(path, encoding="utf-8") as fh:
                     details_html = fh.read()
             except Exception as exc:
                 context.log.warning(
@@ -236,9 +233,7 @@ def process_lobbyist(context: Dataset, session: requests.Session, item):
         if details_html is None:
             res = session.get(url, timeout=60)
             if res.status_code != 200:
-                context.log.warning(
-                    f"Failed to fetch profile for {name}: {res.status_code}"
-                )
+                context.log.warning(f"Failed to fetch profile for {name}: {res.status_code}")
                 return
             details_html = res.text
 
@@ -267,9 +262,7 @@ def process_lobbyist(context: Dataset, session: requests.Session, item):
         snapshots = None
         snapshot_path = None
         if profile_id:
-            snapshot_path = (
-                context.resources_path / f"profile_{profile_id}_snapshots.json"
-            )
+            snapshot_path = context.resources_path / f"profile_{profile_id}_snapshots.json"
             if snapshot_path.exists():
                 try:
                     snapshots = json.loads(snapshot_path.read_text(encoding="utf-8"))
@@ -289,9 +282,7 @@ def process_lobbyist(context: Dataset, session: requests.Session, item):
                         encoding="utf-8",
                     )
                 except Exception as exc:
-                    context.log.warning(
-                        f"{name}: failed to write snapshot cache ({exc})"
-                    )
+                    context.log.warning(f"{name}: failed to write snapshot cache ({exc})")
 
         context.log.info(f"{name}: found {len(snapshots)} quarter snapshots")
         for snapshot in snapshots:
@@ -357,22 +348,16 @@ def extract_details(soup):
             details["company_number"] = next_sibling.strip()
         else:
             # Fallback
-            text = (
-                company_label.get_text(strip=True).replace("Company Number", "").strip()
-            )
+            text = company_label.get_text(strip=True).replace("Company Number", "").strip()
             if text:
                 details["company_number"] = text
 
     # 3. Current quarter metadata
-    period_label, start_date, end_date, clients_form = extract_current_quarter_metadata(
-        soup
-    )
+    period_label, start_date, end_date, clients_form = extract_current_quarter_metadata(soup)
     if period_label:
         details["start_date"] = start_date
         details["end_date"] = end_date
-        details["clients"] = (
-            extract_clients_from_container(clients_form) if clients_form else []
-        )
+        details["clients"] = extract_clients_from_container(clients_form) if clients_form else []
 
     return details
 
@@ -500,8 +485,8 @@ def collect_quarter_snapshots(
     seen_periods = set()
 
     def append_snapshot(snapshot_soup):
-        period_label, start_date, end_date, clients_form = (
-            extract_current_quarter_metadata(snapshot_soup)
+        period_label, start_date, end_date, clients_form = extract_current_quarter_metadata(
+            snapshot_soup
         )
         if not period_label or period_label in seen_periods:
             return
@@ -529,14 +514,14 @@ def collect_quarter_snapshots(
     previous_links = soup.find_all(
         "a", onclick=re.compile(r"A4J\.AJAX\.Submit\('j_id0:j_id1:previousReturns:")
     )
-    context.log.info(
-        f"{profile_url}: fetching {len(previous_links)} previous quarter links"
-    )
+    context.log.info(f"{profile_url}: fetching {len(previous_links)} previous quarter links")
     for link in previous_links:
         onclick = link.get("onclick")
         parsed = parse_ajax_submit(onclick) if isinstance(onclick, str) else None
         if parsed is None:
-            raise ValueError(f"{profile_url}: unrecognised previous-quarter click handler: {onclick!r}")
+            raise ValueError(
+                f"{profile_url}: unrecognised previous-quarter click handler: {onclick!r}"
+            )
 
         form_id, trigger_name, trigger_value = parsed
 
