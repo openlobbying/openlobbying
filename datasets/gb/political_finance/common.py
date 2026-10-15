@@ -106,6 +106,41 @@ def make_donor(
     return donor
 
 
+# Regulated donee types that are always an individual holding an office or role.
+PERSON_DONEE_TYPES = {
+    'MP - Member of Parliament',
+    'MSP - Member of the Scottish Parliament',
+    'MEP - Member of the European Parliament',
+    'AM - Member of the National Assembly for Wales',
+    'GLA - Assembly Member (Greater London)',
+    'MLA - Member of the Legislative Authority of Northern Ireland',
+    'Senedd Member',
+    'Cllr. - Member of a Local Authority',
+    'Mayor',
+    'Police and Crime Commissioner',
+    'Member of Registered Political Party',
+    'Leadership Candidate',
+    'Candidate',
+}
+
+
+def recipient_schema(recipient_type: Optional[str], donee_type: Optional[str]) -> str:
+    """The FtM schema for a regulated entity, from what the EC row tells us about it.
+
+    When the row doesn't say whether the recipient is a person or an organisation
+    (third parties, permitted participants, and loans, which carry no donee type),
+    use LegalEntity: it merges with whichever specific schema another row supplies,
+    rather than guessing Person and colliding with Organization.
+    """
+    if recipient_type == 'Political Party' or donee_type == 'Members Association':
+        return 'Organization'
+    if donee_type in PERSON_DONEE_TYPES:
+        return 'Person'
+    if donee_type:
+        raise ValueError(f"Unknown EC regulated donee type: {donee_type!r}")
+    return 'LegalEntity'
+
+
 def create_recipient_entity(
     dataset,
     recipient_id: Optional[str],
@@ -115,13 +150,7 @@ def create_recipient_entity(
     register_name: Optional[str]
 ):
     """Create a recipient entity (political party or other regulated entity)."""
-    recipient_schema = 'Person'
-    if recipient_type == 'Political Party':
-        recipient_schema = 'Organization'
-    if recipient_donnee_type == 'Members Association':
-        recipient_schema = 'Organization'
-    
-    recipient = dataset.make(recipient_schema)
+    recipient = dataset.make(recipient_schema(recipient_type, recipient_donnee_type))
     recipient.id = dataset.make_id('recipient', recipient_id)
     recipient.add('name', recipient_name)
     
