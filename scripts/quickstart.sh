@@ -14,7 +14,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-DATASET=gb_firs
+DATASET=${QUICKSTART_DATASET:-gb_firs}
 PORT="${PORT:-8000}"
 API="http://127.0.0.1:$PORT"
 
@@ -49,9 +49,9 @@ done
 curl -sf "$API/" >/dev/null || { echo "API did not start within 90s" >&2; exit 1; }
 
 echo "== Query it"
-# Search for the first word of one published company's name, then open its profile.
-name=$(curl -sf "$API/entities?schema=Company&limit=1" \
-  | uv run python -c 'import json, sys; print(json.load(sys.stdin)["results"][0]["caption"])')
+# Search for the first word of one published entity's name, then open its profile.
+name=$(curl -sf "$API/entities?limit=1" \
+  | uv run python -c 'import json, sys; r = json.load(sys.stdin)["results"]; assert r, "no entities published"; print(r[0]["caption"])')
 term=${name%% *}
 search=$(curl -sf --get "$API/search" --data-urlencode "q=$term")
 entity_id=$(echo "$search" \
