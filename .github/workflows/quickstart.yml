@@ -13,6 +13,10 @@ on:
 jobs:
   quickstart:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        dataset: [gb_firs, gb_committees, gb_prca]
 
     steps:
       - name: Check out repository
@@ -41,4 +45,6 @@ jobs:
 
       - name: Quickstart
         working-directory: openlobbying
+        env:
+          QUICKSTART_DATASET: ${{ matrix.dataset }}
         run: scripts/quickstart.sh
