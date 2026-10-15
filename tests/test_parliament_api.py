@@ -2,7 +2,9 @@ import importlib.util
 import logging
 from pathlib import Path
 
-SPEC = importlib.util.spec_from_file_location("parliament_util", Path("datasets/gb/parliament/util.py"))
+SPEC = importlib.util.spec_from_file_location(
+    "parliament_util", Path("datasets/gb/parliament/util.py")
+)
 assert SPEC is not None and SPEC.loader is not None
 UTIL = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(UTIL)

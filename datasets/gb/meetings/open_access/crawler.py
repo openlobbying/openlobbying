@@ -1,6 +1,5 @@
 import csv
-from datetime import datetime
-from typing import Optional
+
 from muckrake.dataset import Dataset
 from muckrake.util import parse_date
 
@@ -46,7 +45,7 @@ def crawl_row(dataset: Dataset, row):
     rep.id = dataset.make_id("rep", rep_name)
     rep.add("name", rep_name)
     rep.add("jurisdiction", "gb")
-    rep.add('topics', 'role.pep')
+    rep.add("topics", "role.pep")
     dataset.emit(rep)
 
     if dept:
@@ -113,7 +112,7 @@ def crawl(dataset: Dataset):
     # currently failing verification in this environment.
     path = dataset.fetch_resource("iw_uk.csv", url, headers=headers, verify=False)
 
-    with open(path, "r", encoding="utf-8-sig") as fh:
+    with open(path, encoding="utf-8-sig") as fh:
         for row in csv.DictReader(fh):
             # # Filter for meetings from 2024 onwards
             # date_str = row.get("date")

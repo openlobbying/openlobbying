@@ -35,40 +35,54 @@ def test_status_schema_mapping():
 
 def test_incompatible_statuses_get_legal_entity_override(tmp_path):
     # The openlobbying#30 case: a company recorded as Individual on some rows.
-    path = write_csv(tmp_path / "donations.csv", [
-        {"DonorId": "83", "DonorStatus": "Individual"},
-        {"DonorId": "83", "DonorStatus": "Individual"},
-        {"DonorId": "83", "DonorStatus": "Company"},
-        {"DonorId": "99", "DonorStatus": "Individual"},
-    ])
+    path = write_csv(
+        tmp_path / "donations.csv",
+        [
+            {"DonorId": "83", "DonorStatus": "Individual"},
+            {"DonorId": "83", "DonorStatus": "Individual"},
+            {"DonorId": "83", "DonorStatus": "Company"},
+            {"DonorId": "99", "DonorStatus": "Individual"},
+        ],
+    )
     overrides = donor_schema_overrides([(path, "DonorId", "DonorStatus")])
     assert overrides == {"83": "LegalEntity"}
 
 
 def test_compatible_statuses_do_not_override(tmp_path):
-    path = write_csv(tmp_path / "donations.csv", [
-        # Company + LLP → both Company
-        {"DonorId": "1", "DonorStatus": "Company"},
-        {"DonorId": "1", "DonorStatus": "Limited Liability Partnership"},
-        # Person + LegalEntity merge cleanly (ancestor/descendant)
-        {"DonorId": "2", "DonorStatus": "Individual"},
-        {"DonorId": "2", "DonorStatus": "Unidentifiable Donor"},
-        # Company + Organization merge cleanly (Company extends Organization)
-        {"DonorId": "3", "DonorStatus": "Company"},
-        {"DonorId": "3", "DonorStatus": "Trade Union"},
-    ])
+    path = write_csv(
+        tmp_path / "donations.csv",
+        [
+            # Company + LLP → both Company
+            {"DonorId": "1", "DonorStatus": "Company"},
+            {"DonorId": "1", "DonorStatus": "Limited Liability Partnership"},
+            # Person + LegalEntity merge cleanly (ancestor/descendant)
+            {"DonorId": "2", "DonorStatus": "Individual"},
+            {"DonorId": "2", "DonorStatus": "Unidentifiable Donor"},
+            # Company + Organization merge cleanly (Company extends Organization)
+            {"DonorId": "3", "DonorStatus": "Company"},
+            {"DonorId": "3", "DonorStatus": "Trade Union"},
+        ],
+    )
     assert donor_schema_overrides([(path, "DonorId", "DonorStatus")]) == {}
 
 
 def test_conflicts_detected_across_files(tmp_path):
-    donations = write_csv(tmp_path / "donations.csv", [
-        {"DonorId": "7", "DonorStatus": "Individual"},
-    ])
-    loans = write_csv(tmp_path / "loans.csv", [
-        {"DonorId": "7", "DonorStatus": "Trade Union"},
-    ])
-    overrides = donor_schema_overrides([
-        (donations, "DonorId", "DonorStatus"),
-        (loans, "DonorId", "DonorStatus"),
-    ])
+    donations = write_csv(
+        tmp_path / "donations.csv",
+        [
+            {"DonorId": "7", "DonorStatus": "Individual"},
+        ],
+    )
+    loans = write_csv(
+        tmp_path / "loans.csv",
+        [
+            {"DonorId": "7", "DonorStatus": "Trade Union"},
+        ],
+    )
+    overrides = donor_schema_overrides(
+        [
+            (donations, "DonorId", "DonorStatus"),
+            (loans, "DonorId", "DonorStatus"),
+        ]
+    )
     assert overrides == {"7": "LegalEntity"}

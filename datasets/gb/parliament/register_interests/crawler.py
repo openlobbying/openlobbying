@@ -1,17 +1,15 @@
 import re
-from typing import Dict, Optional, Any
+from typing import Any
 
 from muckrake.util import parse_date
-from ..util import iter_api_items, legal_entity_id, make_mp, make_legal_entity
 
+from ..util import iter_api_items, legal_entity_id, make_legal_entity, make_mp
 
 # Cache for parent interests: {interest_id: (fields_data, employer_entity)}
-PARENT_CACHE: Dict[int, tuple] = {}
+PARENT_CACHE: dict[int, tuple] = {}
 
 
-def get_payment_date(
-    item: Dict[str, Any], fields_data: Dict[str, Any]
-) -> Optional[str]:
+def get_payment_date(item: dict[str, Any], fields_data: dict[str, Any]) -> str | None:
     for field_name in ("ReceivedDate", "AcceptedDate", "StartDate"):
         value = fields_data.get(field_name)
         if value:
@@ -22,7 +20,7 @@ def get_payment_date(
     return None
 
 
-def add_member_source_url(payment, item: Dict[str, Any]) -> None:
+def add_member_source_url(payment, item: dict[str, Any]) -> None:
     member_id = item.get("member", {}).get("id")
     if member_id:
         payment.add(
@@ -31,9 +29,7 @@ def add_member_source_url(payment, item: Dict[str, Any]) -> None:
         )
 
 
-def classify_support_programme(
-    item: Dict[str, Any], fields_data: Dict[str, Any]
-) -> Optional[str]:
+def classify_support_programme(item: dict[str, Any], fields_data: dict[str, Any]) -> str | None:
     combined_text = " ".join(
         filter(
             None,
@@ -51,7 +47,7 @@ def classify_support_programme(
     return None
 
 
-def build_support_description(fields_data: Dict[str, Any]) -> Optional[str]:
+def build_support_description(fields_data: dict[str, Any]) -> str | None:
     desc_parts = []
     payment_description = fields_data.get("PaymentDescription")
     if payment_description:
@@ -75,7 +71,7 @@ def build_support_description(fields_data: Dict[str, Any]) -> Optional[str]:
     return None
 
 
-def get_fields(item: Dict[str, Any]) -> Dict[str, Any]:
+def get_fields(item: dict[str, Any]) -> dict[str, Any]:
     """Convert the list of fields from the API interest object into a dictionary."""
     fields_data = {}
     for field in item.get("fields", []):
@@ -86,7 +82,7 @@ def get_fields(item: Dict[str, Any]) -> Dict[str, Any]:
     return fields_data
 
 
-def get_currency(item: Dict[str, Any], field_name: str) -> Optional[str]:
+def get_currency(item: dict[str, Any], field_name: str) -> str | None:
     """Extract currency code from a field's typeInfo."""
     for field in item.get("fields", []):
         if field.get("name") == field_name:
@@ -94,13 +90,13 @@ def get_currency(item: Dict[str, Any], field_name: str) -> Optional[str]:
     return None
 
 
-def fetch_interest(dataset, interest_id: int) -> Optional[Dict[str, Any]]:
+def fetch_interest(dataset, interest_id: int) -> dict[str, Any] | None:
     """Fetch details for a single interest by its ID."""
     url = f"https://interests-api.parliament.uk/api/v1/Interests/{interest_id}"
     return dataset.fetch_json(url, cache_days=7)
 
 
-def process_employment(dataset, item: Dict[str, Any], member):
+def process_employment(dataset, item: dict[str, Any], member):
     """Process Category 12 (Employment and earnings) - creates Employment relationship."""
     item_id = item.get("id")
     fields_data = get_fields(item)
@@ -158,7 +154,7 @@ def process_employment(dataset, item: Dict[str, Any], member):
     return fields_data, employer
 
 
-def process_payment(dataset, item: Dict[str, Any], member, parent_employer=None):
+def process_payment(dataset, item: dict[str, Any], member, parent_employer=None):
     """Process Categories 1 & 2 (Employment payments) - creates Payment."""
     item_id = item.get("id")
     fields_data = get_fields(item)
@@ -224,7 +220,7 @@ def process_payment(dataset, item: Dict[str, Any], member, parent_employer=None)
     dataset.emit(payment)
 
 
-def process_donation(dataset, item: Dict[str, Any], member):
+def process_donation(dataset, item: dict[str, Any], member):
     """Process Category 3 (Donations and other support) - creates Payment."""
     item_id = item.get("id")
     fields_data = get_fields(item)
@@ -239,10 +235,7 @@ def process_donation(dataset, item: Dict[str, Any], member):
         # Extract company registration details if available
         reg_nr = fields_data.get("DonorCompanyIdentifier")
         register = None
-        if (
-            reg_nr
-            and fields_data.get("DonorCompanyIdentifierSource") == "Companies House"
-        ):
+        if reg_nr and fields_data.get("DonorCompanyIdentifierSource") == "Companies House":
             register = "GB-COH"
 
         # Determine schema based on donor type
@@ -301,7 +294,7 @@ def process_donation(dataset, item: Dict[str, Any], member):
     dataset.emit(payment)
 
 
-def process_gift_uk(dataset, item: Dict[str, Any], member):
+def process_gift_uk(dataset, item: dict[str, Any], member):
     """Process Category 4 (Gifts from UK sources) - creates Payment (in-kind)."""
     item_id = item.get("id")
     fields_data = get_fields(item)
@@ -316,10 +309,7 @@ def process_gift_uk(dataset, item: Dict[str, Any], member):
         # Extract company registration details if available
         reg_nr = fields_data.get("DonorCompanyIdentifier")
         register = None
-        if (
-            reg_nr
-            and fields_data.get("DonorCompanyIdentifierSource") == "Companies House"
-        ):
+        if reg_nr and fields_data.get("DonorCompanyIdentifierSource") == "Companies House":
             register = "GB-COH"
 
         # Determine schema based on donor type
@@ -368,7 +358,7 @@ def process_gift_uk(dataset, item: Dict[str, Any], member):
     dataset.emit(payment)
 
 
-def extract_company_number(name: str) -> tuple[Optional[str], Optional[str], str]:
+def extract_company_number(name: str) -> tuple[str | None, str | None, str]:
     """Extract company number from name like 'Company Name (Company No. 12345678)'.
 
     Returns: (reg_nr, register, cleaned_name)
@@ -382,7 +372,7 @@ def extract_company_number(name: str) -> tuple[Optional[str], Optional[str], str
     return None, None, name
 
 
-def process_visit(dataset, item: Dict[str, Any], member):
+def process_visit(dataset, item: dict[str, Any], member):
     """Process Category 5 (Visits outside the UK) - creates Trip and Payment(s)."""
     item_id = item.get("id")
     fields_data = get_fields(item)
@@ -442,9 +432,7 @@ def process_visit(dataset, item: Dict[str, Any], member):
                         donor_data[name] = value
                     # Also capture currency from typeInfo
                     if name == "Value" and donor_field.get("typeInfo"):
-                        donor_data["Currency"] = donor_field.get("typeInfo", {}).get(
-                            "currencyCode"
-                        )
+                        donor_data["Currency"] = donor_field.get("typeInfo", {}).get("currencyCode")
                 donors.append(donor_data)
 
     # Process each donor - add as organizer to trip and create payment
@@ -461,9 +449,7 @@ def process_visit(dataset, item: Dict[str, Any], member):
             dataset,
             name=cleaned_name,
             address=donor_data.get("PublicAddress"),
-            schema="Organization"
-            if not donor_data.get("IsPrivateIndividual")
-            else "Person",
+            schema="Organization" if not donor_data.get("IsPrivateIndividual") else "Person",
             reg_nr=reg_nr,
             register=register,
         )
@@ -503,9 +489,7 @@ def process_visit(dataset, item: Dict[str, Any], member):
             if payment_desc:
                 payment.add("description", payment_desc)
 
-            payment.add(
-                "summary", f"Visit: {fields_data.get('Purpose') or item.get('summary')}"
-            )
+            payment.add("summary", f"Visit: {fields_data.get('Purpose') or item.get('summary')}")
 
             add_member_source_url(payment, item)
 
@@ -519,7 +503,7 @@ def process_visit(dataset, item: Dict[str, Any], member):
     dataset.emit(trip)
 
 
-def process_gift_foreign(dataset, item: Dict[str, Any], member):
+def process_gift_foreign(dataset, item: dict[str, Any], member):
     """Process Category 6 (Gifts from outside UK) - creates Payment (in-kind)."""
     item_id = item.get("id")
     fields_data = get_fields(item)
@@ -535,10 +519,7 @@ def process_gift_foreign(dataset, item: Dict[str, Any], member):
         # Extract company registration details if available
         reg_nr = fields_data.get("DonorCompanyIdentifier")
         register = None
-        if (
-            reg_nr
-            and fields_data.get("DonorCompanyIdentifierSource") == "Companies House"
-        ):
+        if reg_nr and fields_data.get("DonorCompanyIdentifierSource") == "Companies House":
             register = "GB-COH"
 
         # Determine schema based on donor type
@@ -595,7 +576,7 @@ def process_gift_foreign(dataset, item: Dict[str, Any], member):
     dataset.emit(payment)
 
 
-def process_property(dataset, item: Dict[str, Any], member):
+def process_property(dataset, item: dict[str, Any], member):
     """Process Category 7 (Land and property) - creates Ownership."""
     item_id = item.get("id")
     fields_data = get_fields(item)
@@ -642,7 +623,7 @@ def process_property(dataset, item: Dict[str, Any], member):
     dataset.emit(ownership)
 
 
-def process_shareholding(dataset, item: Dict[str, Any], member):
+def process_shareholding(dataset, item: dict[str, Any], member):
     """Process Category 8 (Shareholdings) - creates Ownership."""
     item_id = item.get("id")
     fields_data = get_fields(item)
@@ -697,7 +678,7 @@ def process_shareholding(dataset, item: Dict[str, Any], member):
     dataset.emit(ownership)
 
 
-def process_miscellaneous(dataset, item: Dict[str, Any], member):
+def process_miscellaneous(dataset, item: dict[str, Any], member):
     """Process Category 9 (Miscellaneous) - creates UnknownLink or similar."""
     item_id = item.get("id")
     fields_data = get_fields(item)
@@ -724,9 +705,7 @@ def process_miscellaneous(dataset, item: Dict[str, Any], member):
     if description:
         desc_parts.append(description)
 
-    link.add(
-        "description", "\n".join(desc_parts) if desc_parts else item.get("summary")
-    )
+    link.add("description", "\n".join(desc_parts) if desc_parts else item.get("summary"))
     link.add("summary", item.get("summary"))
 
     # Dates
@@ -741,7 +720,7 @@ def process_miscellaneous(dataset, item: Dict[str, Any], member):
     dataset.emit(link)
 
 
-def process_family_employed(dataset, item: Dict[str, Any], member):
+def process_family_employed(dataset, item: dict[str, Any], member):
     """Process Category 10 (Family members employed) - creates Family + Employment."""
     item_id = item.get("id")
     fields_data = get_fields(item)
@@ -791,7 +770,7 @@ def process_family_employed(dataset, item: Dict[str, Any], member):
     dataset.emit(employment)
 
 
-def process_family_lobbying(dataset, item: Dict[str, Any], member):
+def process_family_lobbying(dataset, item: dict[str, Any], member):
     """Process Category 11 (Family members lobbying) - creates Family + Representation."""
     item_id = item.get("id")
     fields_data = get_fields(item)
@@ -898,9 +877,7 @@ def crawl(dataset):
                     if parent_item:
                         p_member_data = parent_item.get("member")
                         p_member = make_mp(dataset, p_member_data)
-                        p_fields, p_employer = process_employment(
-                            dataset, parent_item, p_member
-                        )
+                        p_fields, p_employer = process_employment(dataset, parent_item, p_member)
                         PARENT_CACHE[parent_id] = (p_fields, p_employer)
                         employer = p_employer
 

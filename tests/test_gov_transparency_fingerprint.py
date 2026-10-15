@@ -1,7 +1,6 @@
-from pathlib import Path
 import importlib.util
 import sys
-
+from pathlib import Path
 
 MODULE_PATH = Path("datasets/gb/gov_transparency/fingerprint.py")
 SPEC = importlib.util.spec_from_file_location("gov_transparency_fingerprint", MODULE_PATH)
@@ -16,7 +15,9 @@ fingerprint = MODULE.fingerprint
 looks_like_label = MODULE.looks_like_label
 
 NORMALISE_PATH = Path("datasets/gb/gov_transparency/normalise.py")
-NORMALISE_SPEC = importlib.util.spec_from_file_location("gov_transparency_normalise_for_fp", NORMALISE_PATH)
+NORMALISE_SPEC = importlib.util.spec_from_file_location(
+    "gov_transparency_normalise_for_fp", NORMALISE_PATH
+)
 assert NORMALISE_SPEC is not None
 assert NORMALISE_SPEC.loader is not None
 NORMALISE_MODULE = importlib.util.module_from_spec(NORMALISE_SPEC)
@@ -60,7 +61,9 @@ def test_fingerprint_is_stable_for_same_headers_with_different_rows():
 
 def test_fingerprint_ignores_sheet_name_when_headers_match():
     left = NormalisedSheet(name="Meetings", rows=[["Minister", "Date", "Purpose of meeting"]])
-    right = NormalisedSheet(name="External meetings", rows=[["Minister", "Date", "Purpose of meeting"]])
+    right = NormalisedSheet(
+        name="External meetings", rows=[["Minister", "Date", "Purpose of meeting"]]
+    )
 
     assert fingerprint(left) == fingerprint(right)
 
@@ -76,9 +79,33 @@ def test_detect_header_row_prefers_real_gifts_header_over_short_data_rows():
     sheet = NormalisedSheet(
         name="default",
         rows=[
-            ["Minister", "Gifts received over £140", "Gifts given over £140", "Date received/given", "From/To", "Value", "Outcome"],
-            ["Attorney General Dominic Grieve QC MP", "Rug", "", "Jan-11", "General Abdul Rahim Wardak", "Over limit", "Retained by Department"],
-            ["Attorney General Dominic Grieve QC MP", "Rug", "", "Jan-11", "President Karzai", "Over limit", "Purchased by Minister"],
+            [
+                "Minister",
+                "Gifts received over £140",
+                "Gifts given over £140",
+                "Date received/given",
+                "From/To",
+                "Value",
+                "Outcome",
+            ],
+            [
+                "Attorney General Dominic Grieve QC MP",
+                "Rug",
+                "",
+                "Jan-11",
+                "General Abdul Rahim Wardak",
+                "Over limit",
+                "Retained by Department",
+            ],
+            [
+                "Attorney General Dominic Grieve QC MP",
+                "Rug",
+                "",
+                "Jan-11",
+                "President Karzai",
+                "Over limit",
+                "Purchased by Minister",
+            ],
         ],
     )
 
@@ -100,8 +127,26 @@ def test_detect_header_row_prefers_real_travel_header_over_day_range_rows():
                 "Total cost including travel",
             ],
             ["Attorney General Dominic Grieve QC MP", "", "", "", "", "", "", ""],
-            ["", "25-27 October", "Marrakech, Morocco", "Arab Forum on Asset Recovery", "Charter", "", "", "£898.01"],
-            ["", "10-16 November", "Falkland Islands", "Overseas Territories Conference of Attorneys General", "RAF", "", "", "£1,949"],
+            [
+                "",
+                "25-27 October",
+                "Marrakech, Morocco",
+                "Arab Forum on Asset Recovery",
+                "Charter",
+                "",
+                "",
+                "£898.01",
+            ],
+            [
+                "",
+                "10-16 November",
+                "Falkland Islands",
+                "Overseas Territories Conference of Attorneys General",
+                "RAF",
+                "",
+                "",
+                "£1,949",
+            ],
         ],
     )
 
@@ -115,7 +160,9 @@ def test_detect_header_row_prefers_compact_header_over_pathologically_wide_data_
         "Trades Union Congress",
         "To discuss industrial strategy",
     ]
-    wide_data_row.extend(["Ben Wallace", "2016-01-10 00:00:00", "HMA Egypt", "Aviation Security"] * 200)
+    wide_data_row.extend(
+        ["Ben Wallace", "2016-01-10 00:00:00", "HMA Egypt", "Aviation Security"] * 200
+    )
     sheet = NormalisedSheet(
         name="Meetings",
         rows=[
@@ -133,9 +180,19 @@ def test_detect_header_row_prefers_real_header_over_blank_subject_meeting_rows()
         rows=[
             ["", "Date", "Name of organisation or individual", "Purpose of meeting"],
             ["", "", "", ""],
-            ["Chris Skidmore MP, Parliamentary Secretary ( Minister for the Constitution)", "12-Jan", "Joseph Rowntree Foundation", "Movers and Renters roundtable"],
+            [
+                "Chris Skidmore MP, Parliamentary Secretary ( Minister for the Constitution)",
+                "12-Jan",
+                "Joseph Rowntree Foundation",
+                "Movers and Renters roundtable",
+            ],
             ["", "24-Jan", "Elevations Network", "Student roundtable"],
-            ["", "02-Feb", "The following London Local Authorities attended: Sutton", "London Local Authority Roundtable"],
+            [
+                "",
+                "02-Feb",
+                "The following London Local Authorities attended: Sutton",
+                "London Local Authority Roundtable",
+            ],
         ],
     )
 
@@ -162,11 +219,22 @@ def test_detect_header_row_rejects_late_long_text_meeting_rows():
         rows=[
             ["", "Date", "Name of organisation or individual", "Purpose of meeting"],
             ["", "", "", ""],
-            ["Minister Name", "12-Jan", "Joseph Rowntree Foundation", "Movers and Renters roundtable"],
+            [
+                "Minister Name",
+                "12-Jan",
+                "Joseph Rowntree Foundation",
+                "Movers and Renters roundtable",
+            ],
             ["", "24-Jan", "Elevations Network", "Student roundtable"],
             ["", "25-Jan", "Example Org", "Example purpose"],
             ["", "26-Jan", "Another Org", "Another purpose"],
-            ["", "02-Feb", long_value, "London Local Authority Roundtable to hear their experiences to increase voter registration within their borough"],
+            [
+                "",
+                "02-Feb",
+                long_value,
+                "London Local Authority Roundtable to hear their experiences "
+                "to increase voter registration within their borough",
+            ],
         ],
     )
 

@@ -15,6 +15,7 @@ Always run Python via `uv` (never `python`/`python3`/`pip` directly). Run muckra
 - `uv run muckrake list` / `crawl <name>` / `ner-import ner/candidates.jsonl.gz` / `ner-extract` / `ner-review` / `ner-export` / `load <name>` / `xref` / `dedupe` / `dedupe-edges` / `release-build <names...>` / `release-list` / `release-publish <id>` — the pipeline over this repo's datasets. Run `ner-import` before any `ner-extract` on a fresh working DB (LLM results are paid; see `ner/README.md`). `release-build` with no names needs a successful run of **every** dataset, so pass names. Never `load` directly into the published DB; go through releases.
 - `xref`, `dedupe`, `dedupe-edges` and `export` need LevelDB (`plyvel`), which doesn't load natively on macOS: run them on Linux or in the muckrake container. Everything else runs natively.
 - `uv run pytest` — tests (crawler/dataset tests live here, e.g. `tests/test_gov_transparency_*`). Single test: `uv run pytest tests/test_foo.py::test_bar`.
+- `uv run ruff check .` / `uv run ruff format .` / `uv run mypy src datasets tests scripts` — lint, format and type-check (CI runs all three; `uv run pre-commit install` once to run ruff on commit).
 
 ## Layout
 

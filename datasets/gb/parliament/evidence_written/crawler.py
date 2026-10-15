@@ -1,10 +1,10 @@
 from ..util import (
     iter_api_items,
     make_committee,
+    make_evidence_event,
+    make_witness_employment,
     make_witness_org,
     make_witness_person,
-    make_witness_employment,
-    make_evidence_event,
 )
 
 
@@ -23,9 +23,7 @@ def crawl(dataset):
             else None
         )
         evidence_date = (
-            item.get("meetingDate")
-            or item.get("activityStartDate")
-            or item.get("publicationDate")
+            item.get("meetingDate") or item.get("activityStartDate") or item.get("publicationDate")
         )
 
         # create committee
@@ -53,11 +51,7 @@ def crawl(dataset):
                     witness_id = witness.get("id") or witness.get("personId")
                     org_id = org_item.get("cisId") or org_item.get("name")
                     record_id = None
-                    if (
-                        evidence_id is not None
-                        and witness_id is not None
-                        and org_id
-                    ):
+                    if evidence_id is not None and witness_id is not None and org_id:
                         record_id = f"written:{evidence_id}:{witness_id}:{org_id}"
                     make_witness_employment(
                         dataset,

@@ -1,7 +1,9 @@
 import csv
 from urllib.parse import urlencode
+
 from muckrake.util import parse_amount, parse_date
-from .common import make_donor, create_recipient_entity
+
+from .common import create_recipient_entity, make_donor
 
 
 def build_url(base, params):
@@ -43,7 +45,7 @@ def fetch_loans(dataset):
 
 def process_loans(dataset, path, schema_overrides):
     """Emit entities from a fetched loans CSV."""
-    with open(path, "r", encoding="utf-8-sig") as fh:
+    with open(path, encoding="utf-8-sig") as fh:
         reader = csv.DictReader(fh)
 
         for row in reader:
@@ -62,9 +64,7 @@ def process_loans(dataset, path, schema_overrides):
 
             # Parse loan data
             loan_ec_ref = row.get("ECRef")
-            loan_url = (
-                f"https://search.electoralcommission.org.uk/English/Loans/{loan_ec_ref}"
-            )
+            loan_url = f"https://search.electoralcommission.org.uk/English/Loans/{loan_ec_ref}"
             loan_value = row.get("Value")
             loan_start_date = row.get("StartDate")
             loan_end_date = row.get("EndDate")

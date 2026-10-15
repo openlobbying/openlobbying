@@ -26,7 +26,35 @@ muckrake = { path = "../muckrake", editable = true }
 [dependency-groups]
 dev = [
     "pytest>=9.0.3",
+    "ruff>=0.15",
+    "mypy>=1.19",
+    "pre-commit>=4.0",
 ]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+# Unmaintained crawler stubs, kept unchanged (see datasets_parked/README.md).
+extend-exclude = ["datasets_parked"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.ruff.lint.flake8-bugbear]
+# FastAPI parameter defaults such as `Query(None)` are evaluated once by design.
+extend-immutable-calls = ["fastapi.Query"]
+
+[tool.mypy]
+python_version = "3.13"
+check_untyped_defs = true
+warn_unused_ignores = true
+# Crawler directories aren't packages, and several hold a crawler.py.
+explicit_package_bases = true
+mypy_path = "src"
+
+[[tool.mypy.overrides]]
+module = ["odf.*", "openpyxl.*", "org_id.*", "pandas.*", "xlrd.*"]
+ignore_missing_imports = true
