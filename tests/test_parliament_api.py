@@ -57,3 +57,16 @@ def test_iter_api_items_handles_a_server_side_page_cap():
     dataset = PagedDataset(list(range(50)), total=50, max_page=20)
     assert list(UTIL.iter_api_items(dataset, URL, {"skip": 0, "take": 100})) == list(range(50))
     assert dataset.incomplete == []
+
+
+class IdDataset:
+    def make_id(self, *parts, reg_nr=None, register=None):
+        return "-".join(str(p) for p in (*parts, reg_nr, register) if p)
+
+
+def test_person_and_organization_with_same_name_get_different_ids():
+    ds = IdDataset()
+    person = UTIL.legal_entity_id(ds, "Person", "Results UK")
+    org = UTIL.legal_entity_id(ds, "Organization", "Results UK")
+    assert person != org
+    assert org == UTIL.legal_entity_id(ds, "LegalEntity", "Results UK")
