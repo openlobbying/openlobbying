@@ -1,0 +1,8 @@
+# Sites that refuse requests from GitHub Actions runners (403 or 503 there,
+# fine from a browser). Checked by hand; excluded so CI doesn't fail on them.
+^https://publications\.parliament\.uk/
+^https://members\.parliament\.uk/
+^https://developer\.parliament\.uk/
+^https://foreign-influence-registration-scheme\.service\.gov\.uk/
+^https://policycommons\.net/
+^https://www\.theyworkforyou\.com/

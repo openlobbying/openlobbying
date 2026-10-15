@@ -562,6 +562,7 @@ def judge_admin_dedupe_candidate(
             body.judgement,
             body.user_id,
             user_name=body.user_name,
+            user_prefix="openlobbying",
         )
     except DedupeLockError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
@@ -608,6 +609,7 @@ def judge_admin_dedupe_cluster(
                 judgement,
                 body.user_id,
                 user_name=body.user_name,
+                user_prefix="openlobbying",
             )
     except DedupeLockError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc

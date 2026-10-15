@@ -70,6 +70,7 @@ def parse_date(text: str) -> str | None:
 
 def crawl(dataset):
     response = requests.get(BASE_URL, headers=HEADERS)
+    response.raise_for_status()
     soup = BeautifulSoup(response.text, 'html.parser')
 
     for link in soup.select('a.card__link'):
@@ -80,6 +81,7 @@ def crawl(dataset):
         article_url = urljoin(BASE_URL, href)
         
         article_response = requests.get(article_url, headers=HEADERS)
+        article_response.raise_for_status()
         article_soup = BeautifulSoup(article_response.text, 'html.parser')
 
 

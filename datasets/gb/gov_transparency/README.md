@@ -2,9 +2,10 @@
 
 Government departments in the UK publish regular transparency returns covering ministers, special advisers, and senior officials. `config.yml` includes a list of these publications identified so far.
 
-These returns mainly cover meetings with external organisations, gifts, hospitality, and travel. Additionally, we have some returns on things like receptions, outside employment, etc.
+These returns mainly cover meetings with external organisations, gifts, hospitality, and travel. Some returns also cover receptions and outside employment.
 
-To review and include:
+## Collections not yet included
+
 - [ ] [DHSC registers of board members' interests - GOV.UK](https://www.gov.uk/government/collections/dhsc-registers-of-board-members-interests) / [DWP register of board members’ interests - GOV.UK](https://www.gov.uk/government/collections/dwp-register-of-board-members-interests) / [Cabinet Office register of board members’ interests - GOV.UK](https://www.gov.uk/government/collections/cabinet-office-register-of-board-members-interests)
 - [ ] [DESNZ: Ministerial gifts, hospitality, travel and meetings with external organisations - data.gov.uk](https://www.data.gov.uk/dataset/2673218b-0888-4617-a94e-9df90f75117f/ministerial-gifts-hospitality-travel-and-meetings-with-external-organisations)
 - [ ] [Special advisers: gifts and hospitality - gov.scot](https://www.gov.scot/collections/special-advisers-gifts-and-hospitality/)
@@ -12,16 +13,24 @@ To review and include:
 
 ## File formats
 
-Across the current configured collection list:
+The configured collections list about 11,000 source files (11,270 in the crawl of 15 Oct 2026). Downloaded attachments on disk on that date, by file extension:
 
-- `8,810` attachments have a `.csv` filename
-- `287` attachments have a `.xlsx` filename
-- `225` attachments have a `.ods` filename
-- `64` attachments have a `.xls` filename
-- `27` attachments have a `.xlsm` filename
-- `25` attachments are HTML publications containing tabular data
+| Extension | Files |
+|---|---|
+| `.csv` | 9,110 |
+| `.pdf` | 1,442 |
+| `.xlsx` | 305 |
+| `.ods` | 163 |
+| `.doc` | 85 |
+| `.xls` | 60 |
+| `.xlsm` | 27 |
+| `.rtf` | 20 |
+| `.odt` | 19 |
+| `.docx`, `.xlt` | 3 |
 
-Important caveat:
+HTML publications that contain tables are also sources; they are fetched as pages, not downloaded as files.
+
+The crawler detects the format from the file's content before its extension (`normalise.py`). Files it can't read as a table, such as PDF and Word documents, are recorded as `unsupported` in the source trace and skipped.
 
 - Some older files are served with Excel MIME types but are actually CSV files.
 - File extension is more reliable than MIME type, but both can be wrong.
@@ -57,9 +66,9 @@ This dataset covers several recurring transparency return types, including:
 
 These can appear as one-file-per-activity CSVs, mixed workbooks with multiple activity tabs, Prime Minister-specific layouts, special adviser returns, senior official returns, and older legacy templates with nil-only publications or explanatory note rows.
 
-## Current crawler model
+## Crawler model
 
-The current crawler implementation supports these activity types:
+The crawler supports these activity types:
 
 - `meetings`
 - `gifts`
@@ -67,6 +76,8 @@ The current crawler implementation supports these activity types:
 - `travel`
 - `outside_employment`
 
-There is no generic `other` activity type in the current code path.
+There is no generic `other` activity type.
 
-For schema authoring details, see `AGENTS.md`. For the canonical mapping model, see `MAPPING.md`. For the broader refactor plan and current implementation notes, see `PLAN.md`.
+For schema authoring details, see `AGENTS.md`. For the canonical mapping model, see `MAPPING.md`.
+
+Downloaded attachments (every format except HTML) are fetched with `dataset.fetch_resource` and saved under `data/datasets/gb_gov_transparency/resources/`, where they never expire. HTML publications are fetched with `dataset.fetch_text`, which caches them in the working database's `cache` table.
