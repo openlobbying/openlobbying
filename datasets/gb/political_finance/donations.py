@@ -45,7 +45,8 @@ def fetch_donations(dataset):
             "na",
             "unidentifiabledonor",
             "buildingsociety",
-        ],  # we're filtering out "individual" donor status due to data protection concerns, to remove when we sort it out
+        ],  # we're filtering out "individual" donor status due to data protection concerns,
+        # to remove when we sort it out
         "isIrishSourceYes": "true",
         "isIrishSourceNo": "true",
         "includeOutsideSection75": "true",

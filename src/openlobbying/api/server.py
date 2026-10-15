@@ -339,8 +339,10 @@ TOP_ACTOR_SQL = text(
             s.canonical_id AS actor_id,
             MAX(CASE WHEN s.prop = 'name' THEN s.value END) AS name,
             MAX(s.schema) AS schema,
-            MAX(CASE WHEN s.prop = 'topics' AND s.value = 'role.lobby' THEN 1 ELSE 0 END) AS is_lobby,
-            MAX(CASE WHEN s.prop = 'topics' AND s.value = 'pol.party' THEN 1 ELSE 0 END) AS is_party
+            MAX(CASE WHEN s.prop = 'topics' AND s.value = 'role.lobby' THEN 1 ELSE 0 END)
+                AS is_lobby,
+            MAX(CASE WHEN s.prop = 'topics' AND s.value = 'pol.party' THEN 1 ELSE 0 END)
+                AS is_party
         FROM statement s
         WHERE s.schema IN ('Organization', 'Company', 'LegalEntity', 'Person', 'PublicBody')
         GROUP BY s.canonical_id

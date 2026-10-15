@@ -232,7 +232,8 @@ def test_detect_header_row_rejects_late_long_text_meeting_rows():
                 "",
                 "02-Feb",
                 long_value,
-                "London Local Authority Roundtable to hear their experiences to increase voter registration within their borough",
+                "London Local Authority Roundtable to hear their experiences "
+                "to increase voter registration within their borough",
             ],
         ],
     )

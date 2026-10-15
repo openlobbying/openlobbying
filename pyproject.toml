@@ -42,3 +42,7 @@ extend-exclude = ["datasets_parked"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
+
+[tool.ruff.lint.flake8-bugbear]
+# FastAPI parameter defaults such as `Query(None)` are evaluated once by design.
+extend-immutable-calls = ["fastapi.Query"]

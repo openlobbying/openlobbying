@@ -43,8 +43,6 @@ def extract_details(soup):
     # Find the current client list section
     current_list_heading = soup.find(string=re.compile(r"Current client list", re.I))
     if current_list_heading:
-        # The table is a sibling of the parent or nearby
-        parent = current_list_heading.parent
         # Try to find the first table following this heading
         table = current_list_heading.find_next("table", class_="clrDataTable")
         if table:
@@ -74,7 +72,10 @@ def scrape_profiles(limit=None):
     session = requests.Session()
     session.headers.update(
         {
-            "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "User-Agent": (
+                "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
+                "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+            ),
         }
     )
 

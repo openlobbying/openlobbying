@@ -160,7 +160,8 @@ def crawl(dataset):
                             practitioner_employment.add("employer", lobbyist.id)
                             practitioner_employment.add("employee", practitioner.id)
                             practitioner_employment.add("startDate", date_start)
-                            # practitioner_employment.add('endDate', date_end) # latest quarter should have no end date
+                            # latest quarter should have no end date:
+                            # practitioner_employment.add('endDate', date_end)
                             dataset.emit(practitioner_employment)
 
             # Get clients from all three sources

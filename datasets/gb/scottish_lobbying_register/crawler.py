@@ -191,7 +191,9 @@ def crawl(dataset):
 
     # now let's get the individual meetings
     # https://www.lobbying.scot/SPS/Search/SearchResult?id=a1c36112-6b57-47ff-9228-86b086ac2996
-    # returns_page = dataset.fetch_html(f"{BASE_URL}/Search/SearchResult?id={org_id}", cache_days=30)
+    # returns_page = dataset.fetch_html(
+    #     f"{BASE_URL}/Search/SearchResult?id={org_id}", cache_days=30
+    # )
     # use the CSVs, maybe download the unfiltered one and do it all in one go?
 
     information_returns_payload = {
@@ -326,7 +328,7 @@ def crawl(dataset):
                 else []
             )
 
-            for i, name in enumerate(persons_lobbied):
+            for name in persons_lobbied:
                 politician = dataset.make("Person")
                 politician.id = dataset.make_id("scottish_lobbying_register", "politician", name)
                 politician.add("name", name)

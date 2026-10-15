@@ -21,7 +21,8 @@ def load_manifest(path: Path) -> dict[tuple[str, str], dict]:
 def main(argv: list[str]) -> int:
     if len(argv) != 3:
         print(
-            "Usage: uv run python -m datasets.gb.gov_transparency.trace_diff <old.jsonl> <new.jsonl>"
+            "Usage: uv run python -m datasets.gb.gov_transparency.trace_diff "
+            "<old.jsonl> <new.jsonl>"
         )
         return 1
 

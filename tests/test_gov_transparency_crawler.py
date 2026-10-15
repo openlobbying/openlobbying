@@ -157,7 +157,10 @@ def test_crawl_emits_entities_for_known_schema(tmp_path):
                 ]
             },
         },
-        attachment_url: b"Minister,Date,Name of organisation or individual,Purpose of meeting\nJane Doe,2024-01-10,Example Org,Policy discussion\n",
+        attachment_url: (
+            b"Minister,Date,Name of organisation or individual,Purpose of meeting\n"
+            b"Jane Doe,2024-01-10,Example Org,Policy discussion\n"
+        ),
     }
 
     MODULE.load_schema = lambda fingerprint: MODULE.schema_module.schema_from_dict(
@@ -247,7 +250,10 @@ def test_crawl_reprocesses_every_source_and_writes_no_manifest(tmp_path):
                 ]
             },
         },
-        attachment_url: b"Minister,Date,Name of organisation or individual,Purpose of meeting\nJane Doe,2024-01-10,Example Org,Policy discussion\n",
+        attachment_url: (
+            b"Minister,Date,Name of organisation or individual,Purpose of meeting\n"
+            b"Jane Doe,2024-01-10,Example Org,Policy discussion\n"
+        ),
     }
 
     original_load_schema = MODULE.load_schema
@@ -406,7 +412,9 @@ def test_next_unknown_skips_processed_sources_from_incremental_manifest(
                     early_attachment_url: {
                         "url": early_attachment_url,
                         "resource_path": str(tmp_path / "resources" / "example.csv"),
-                        "source_signature": f"bytes:{hashlib.sha256(early_bytes).hexdigest()}:{len(early_bytes)}",
+                        "source_signature": (
+                            f"bytes:{hashlib.sha256(early_bytes).hexdigest()}:{len(early_bytes)}"
+                        ),
                         "schema_registry_signature": MODULE.schema_registry_signature(),
                         "status": "processed",
                         "file_format": "csv",
@@ -481,7 +489,10 @@ def test_next_blocker_skips_blocker_clear_sources_from_manifest(tmp_path, monkey
                 ]
             },
         },
-        early_attachment_url: b"Minister,Date,Name of organisation or individual,Purpose of meeting\nJane Doe,2024-01-10,Example Org,Policy discussion\n",
+        early_attachment_url: (
+            b"Minister,Date,Name of organisation or individual,Purpose of meeting\n"
+            b"Jane Doe,2024-01-10,Example Org,Policy discussion\n"
+        ),
         late_attachment_url: b"Alpha,Beta,Gamma\n1,2,3\n",
     }
     early_bytes = dataset.responses[early_attachment_url]
@@ -493,7 +504,9 @@ def test_next_blocker_skips_blocker_clear_sources_from_manifest(tmp_path, monkey
                     early_attachment_url: {
                         "url": early_attachment_url,
                         "resource_path": str(tmp_path / "resources" / "early.csv"),
-                        "source_signature": f"bytes:{hashlib.sha256(early_bytes).hexdigest()}:{len(early_bytes)}",
+                        "source_signature": (
+                            f"bytes:{hashlib.sha256(early_bytes).hexdigest()}:{len(early_bytes)}"
+                        ),
                         "schema_registry_signature": MODULE.schema_registry_signature(),
                         "status": "blocker_clear",
                     }

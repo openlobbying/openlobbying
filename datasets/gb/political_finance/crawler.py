@@ -28,7 +28,8 @@ def crawl(dataset):
     )
     if schema_overrides:
         dataset.log.warning(
-            f"{len(schema_overrides)} donor(s) with conflicting EC status types; emitting as LegalEntity"
+            f"{len(schema_overrides)} donor(s) with conflicting EC status types; "
+            "emitting as LegalEntity"
         )
 
     process_donations(dataset, donations_path, schema_overrides)

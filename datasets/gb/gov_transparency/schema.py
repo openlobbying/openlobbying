@@ -15,13 +15,13 @@ if TYPE_CHECKING:
 try:
     from .common import load_sibling_module
     from .normalise import NormalisedSheet
-except ImportError:
+except ImportError as err:
     common_spec = importlib.util.spec_from_file_location(
         f"{__name__}.common",
         Path(__file__).with_name("common.py"),
     )
     if common_spec is None or common_spec.loader is None:
-        raise RuntimeError("Could not load gov-transparency common module")
+        raise RuntimeError("Could not load gov-transparency common module") from err
     common_module = importlib.util.module_from_spec(common_spec)
     sys.modules[common_spec.name] = common_module
     common_spec.loader.exec_module(common_module)
@@ -219,14 +219,16 @@ def validate_schema(schema: Schema, sheet: NormalisedSheetT) -> None:
     if schema.date.mode == "column_range" and stats.blank_end_date_rows > 0:
         raise ValueError(
             f"Schema {schema.fingerprint} has blank end date values in sheet {sheet.name!r} "
-            f"(mapped_rows={stats.mapped_rows}, nil_rows={stats.nil_rows}, blank_end_date_rows={stats.blank_end_date_rows})"
+            f"(mapped_rows={stats.mapped_rows}, nil_rows={stats.nil_rows}, "
+            f"blank_end_date_rows={stats.blank_end_date_rows})"
         )
     if not rows:
         if stats.mapped_rows == 0 and stats.skip_prefix_rows == 0 and stats.nil_rows == 0:
             raise ValueError(
                 f"Schema {schema.fingerprint} has no data rows in sheet {sheet.name!r} "
-                f"(mapped_rows={stats.mapped_rows}, nil_rows={stats.nil_rows}, blank_rows={stats.blank_rows}, "
-                f"blank_date_rows={stats.blank_date_rows}, skip_prefix_rows={stats.skip_prefix_rows})"
+                f"(mapped_rows={stats.mapped_rows}, nil_rows={stats.nil_rows}, "
+                f"blank_rows={stats.blank_rows}, blank_date_rows={stats.blank_date_rows}, "
+                f"skip_prefix_rows={stats.skip_prefix_rows})"
             )
         return
 
@@ -246,7 +248,8 @@ def validate_schema(schema: Schema, sheet: NormalisedSheetT) -> None:
                 else ""
             )
             raise ValueError(
-                f"Cannot parse date value {raw_date!r} at row_index={row.row_index} in sheet {sheet.name!r}; "
+                f"Cannot parse date value {raw_date!r} at row_index={row.row_index} "
+                f"in sheet {sheet.name!r}; "
                 f"mapped={row.mapped}; layout.fill_down_columns={schema.layout.fill_down_columns}; "
                 f"nil_return_markers={schema.layout.nil_return_markers}"
             ) from exc

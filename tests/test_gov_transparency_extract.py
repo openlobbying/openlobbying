@@ -120,7 +120,9 @@ def test_extract_can_derive_subject_name_from_provenance():
     provenance = Provenance(
         department="cabinet-office",
         collection_type="hospitality",
-        publication_title="Cabinet Office: ministerial gifts hospitality travel and meetings, April to June 2016",
+        publication_title=(
+            "Cabinet Office: ministerial gifts hospitality travel and meetings, April to June 2016"
+        ),
         attachment_title="Rt Hon David Cameron MP guests at chequers, April to June 2016",
         url="https://example.test/source.csv",
         period_start=date(2016, 4, 1),

@@ -37,8 +37,9 @@ def crawl_spending(dataset):
             amount_scotland = row.get("AmountInScotland")
             amount_wales = row.get("AmountInWales")
             amount_ni = row.get("AmountInNorthernIreland")
-            date_of_claim = row.get("DateOfClaimForPayment")
-            date_paid = row.get("DatePaid")
+            # Suspected gap: these two dates are read but never emitted on the Payment.
+            date_of_claim = row.get("DateOfClaimForPayment")  # noqa: F841
+            date_paid = row.get("DatePaid")  # noqa: F841
             joint_campaign = row.get("JointCampaignName")
             unregistered = row.get("UnregisteredCampaignerName")
             campaigning_name = row.get("CampaigningName")

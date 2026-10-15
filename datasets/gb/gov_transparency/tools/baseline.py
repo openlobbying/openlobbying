@@ -21,13 +21,13 @@ try:
     from ..normalise import normalise
     from ..schema import SCHEMAS_DIR, load_schema, schema_from_dict, validate_schema
     from ..types import Provenance
-except ImportError:
+except ImportError as err:
     common_spec = importlib.util.spec_from_file_location(
         f"{__name__}.common",
         Path(__file__).resolve().parents[1] / "common.py",
     )
     if common_spec is None or common_spec.loader is None:
-        raise RuntimeError("Could not load gov-transparency common module")
+        raise RuntimeError("Could not load gov-transparency common module") from err
     common_module = importlib.util.module_from_spec(common_spec)
     sys.modules[common_spec.name] = common_module
     common_spec.loader.exec_module(common_module)

@@ -28,13 +28,13 @@ try:
     from .schema import load_schema, validate_schema
     from .trace import NullTraceWriter, TraceWriter
     from .types import Provenance
-except ImportError:
+except ImportError as err:
     common_spec = importlib.util.spec_from_file_location(
         f"{__name__}.common",
         Path(__file__).with_name("common.py"),
     )
     if common_spec is None or common_spec.loader is None:
-        raise RuntimeError("Could not load gov-transparency common module")
+        raise RuntimeError("Could not load gov-transparency common module") from err
     common_module = importlib.util.module_from_spec(common_spec)
     sys.modules[common_spec.name] = common_module
     common_spec.loader.exec_module(common_module)
@@ -103,12 +103,14 @@ def iter_collection_configs(dataset: Dataset):
         collection_urls = department.get("collection_urls", [])
         if not isinstance(collection_urls, list):
             raise ValueError(
-                f"gov-transparency department '{department_name}' must define collection_urls as a list"
+                f"gov-transparency department '{department_name}' "
+                "must define collection_urls as a list"
             )
         for collection_url in collection_urls:
             if not isinstance(collection_url, str) or not collection_url.strip():
                 raise ValueError(
-                    f"gov-transparency department '{department_name}' collection_urls must contain only strings"
+                    f"gov-transparency department '{department_name}' "
+                    "collection_urls must contain only strings"
                 )
             yield CollectionConfig(
                 department=department_name, collection_url=collection_url.strip()
@@ -294,7 +296,8 @@ def iter_publication_sources(
     attachments = details.get("attachments", [])
     if not isinstance(attachments, list):
         raise ValueError(
-            f"Publication API response for {publication_path} must define details.attachments as a list"
+            f"Publication API response for {publication_path} "
+            "must define details.attachments as a list"
         )
 
     yielded_attachment = False
@@ -461,12 +464,14 @@ def iter_collection_sources(dataset: Dataset, collection: CollectionConfig):
     links = collection_data.get("links", {})
     if not isinstance(links, dict):
         raise ValueError(
-            f"Collection API response for {collection.collection_url} must define links as an object"
+            f"Collection API response for {collection.collection_url} "
+            "must define links as an object"
         )
     documents = links.get("documents", [])
     if not isinstance(documents, list):
         raise ValueError(
-            f"Collection API response for {collection.collection_url} must define links.documents as a list"
+            f"Collection API response for {collection.collection_url} "
+            "must define links.documents as a list"
         )
 
     for document in documents:
@@ -587,12 +592,13 @@ def process_sheet(
         report_unknown_fingerprint(dataset, provenance, resource_path, sheet, sheet_fingerprint)
         raise ValueError(f"UNKNOWN FINGERPRINT: {sheet_fingerprint}")
 
+    schema_path = Path(__file__).with_name("schemas") / f"{sheet_fingerprint}.json"
     try:
         validate_schema(schema, sheet)
     except Exception as exc:
         raise ValueError(
             "Schema validation failed: "
-            f"fingerprint={sheet_fingerprint} schema={Path(__file__).with_name('schemas') / f'{sheet_fingerprint}.json'} "
+            f"fingerprint={sheet_fingerprint} schema={schema_path} "
             f"resource={resource_path} sheet={sheet.name!r} url={provenance.url} error={exc}"
         ) from exc
 
@@ -604,7 +610,7 @@ def process_sheet(
     except Exception as exc:
         raise ValueError(
             "Extraction failed: "
-            f"fingerprint={sheet_fingerprint} schema={Path(__file__).with_name('schemas') / f'{sheet_fingerprint}.json'} "
+            f"fingerprint={sheet_fingerprint} schema={schema_path} "
             f"resource={resource_path} sheet={sheet.name!r} url={provenance.url} error={exc}"
         ) from exc
 
@@ -615,8 +621,9 @@ def process_sheet(
         except Exception as exc:
             raise ValueError(
                 "Entity emission failed: "
-                f"fingerprint={sheet_fingerprint} schema={Path(__file__).with_name('schemas') / f'{sheet_fingerprint}.json'} "
-                f"resource={resource_path} sheet={sheet.name!r} row_index={record.get('row_index')} "
+                f"fingerprint={sheet_fingerprint} schema={schema_path} "
+                f"resource={resource_path} sheet={sheet.name!r} "
+                f"row_index={record.get('row_index')} "
                 f"record={record} url={provenance.url} error={exc}"
             ) from exc
     stats["entities_emitted"] += emitted_count
@@ -624,7 +631,7 @@ def process_sheet(
     trace_record.update(
         {
             "status": "validated",
-            "schema_path": str(Path(__file__).with_name("schemas") / f"{sheet_fingerprint}.json"),
+            "schema_path": str(schema_path),
             "sheet_type": schema.sheet_type,
             "activity_type": schema.activity_type,
             "row_counts": {

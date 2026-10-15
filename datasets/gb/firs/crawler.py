@@ -24,7 +24,10 @@ def get_summary_block(soup, title: str):
 
 
 def extract_field_value(block, key_text: str) -> list[str] | None:
-    """Extract a field value from a summary block given the key text. Returns a list of values or None."""
+    """Extract a field value from a summary block given the key text.
+
+    Returns a list of values or None.
+    """
     key_element = block.find("dt", class_="gi-summary-blocklist__key", string=key_text)  # type: ignore
     if not key_element:
         return None
