@@ -71,3 +71,24 @@ jobs:
         env:
           MUCKRAKE_DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
           BETTER_AUTH_SECRET: ci-build-only
+
+  links:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+
+      # Checks links in every Markdown file, including relative links to files in
+      # this repo. The openlobbying/docs repo and the org project boards are
+      # private, so the workflow token gets a 404 for them; they are excluded.
+      - name: Check Markdown links
+        uses: lycheeverse/lychee-action@e7477775783ea5526144ba13e8db5eec57747ce8 # v2.9.0
+        with:
+          args: >-
+            --no-progress
+            --exclude-loopback
+            --exclude '^https://github\.com/openlobbying/docs(/|$)'
+            --exclude '^https://github\.com/orgs/openlobbying/projects/'
+            --exclude-path node_modules
+            './**/*.md'

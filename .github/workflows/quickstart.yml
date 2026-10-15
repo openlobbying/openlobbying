@@ -1,0 +1,44 @@
+name: Quickstart
+
+# Runs the README Quickstart (scripts/quickstart.sh) from a fresh checkout:
+# crawl gb_firs into SQLite, build and publish an ingest, start the API and
+# query it. gb_firs is the smallest dataset (a few seconds, one site) but it is
+# fetched live, so an outage at the FIRS register fails this job.
+
+on:
+  pull_request:
+    branches: [develop, main]
+  workflow_dispatch:
+
+jobs:
+  quickstart:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+        with:
+          path: openlobbying
+
+      # The README's first step: clone muckrake next to this repo.
+      - name: Check out muckrake
+        uses: actions/checkout@v5
+        with:
+          repository: openlobbying/muckrake
+          ref: ${{ github.base_ref || 'develop' }}
+          path: muckrake
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v6
+
+      # README Prerequisites (Debian/Ubuntu).
+      - name: Install system dependencies
+        run: sudo apt-get update && sudo apt-get install -y pkg-config libicu-dev libleveldb-dev
+
+      - name: Install dependencies
+        working-directory: openlobbying
+        run: uv sync --locked
+
+      - name: Quickstart
+        working-directory: openlobbying
+        run: scripts/quickstart.sh
