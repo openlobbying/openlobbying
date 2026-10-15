@@ -51,7 +51,9 @@ def crawl_spending(dataset):
             )
             dataset.emit(supplier)
 
-            recipient = create_recipient_entity(
+            # BUG: register_name is missing, so this call raises TypeError; crawl_spending
+            # is not wired into crawler.py, so it never runs.
+            recipient = create_recipient_entity(  # type: ignore[call-arg]
                 dataset, recipient_id, recipient_name, recipient_type, None
             )
             dataset.emit(recipient)

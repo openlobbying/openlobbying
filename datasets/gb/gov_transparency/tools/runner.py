@@ -4,6 +4,7 @@ import importlib.util
 import sys
 import tempfile
 from pathlib import Path
+from typing import TextIO, cast
 
 from followthemoney.statement.serialize import PackStatementWriter
 from muckrake.dataset import Dataset
@@ -58,7 +59,7 @@ CONFIG_PATH = Path("datasets/gb/gov_transparency/config.yml")
 
 def make_dataset() -> Dataset:
     temp = tempfile.NamedTemporaryFile("w")
-    return Dataset(CONFIG_PATH, PackStatementWriter(temp), timestamps={})
+    return Dataset(CONFIG_PATH, PackStatementWriter(cast(TextIO, temp)), timestamps={})
 
 
 def make_preview(sheet) -> list[list[str]]:

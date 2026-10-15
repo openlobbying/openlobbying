@@ -5,6 +5,7 @@ import json
 import sys
 import tempfile
 from pathlib import Path
+from typing import Any, TextIO, cast
 
 from followthemoney.statement.serialize import PackStatementWriter
 from muckrake.dataset import Dataset
@@ -83,7 +84,7 @@ CONFIG_PATH = Path("datasets/gb/gov_transparency/config.yml")
 
 def make_dataset() -> Dataset:
     temp = tempfile.NamedTemporaryFile("w")
-    return Dataset(CONFIG_PATH, PackStatementWriter(temp), timestamps={})
+    return Dataset(CONFIG_PATH, PackStatementWriter(cast(TextIO, temp)), timestamps={})
 
 
 def make_preview(sheet) -> list[list[str]]:
@@ -107,9 +108,7 @@ def make_context(provenance, source_reference, sheet, sheet_fingerprint: str) ->
     }
 
 
-def blocker_status_for_source(
-    manifest: dict[str, object], provenance, source_reference
-) -> str | None:
+def blocker_status_for_source(manifest: dict[str, Any], provenance, source_reference) -> str | None:
     source_entry = manifest.get("sources", {}).get(make_source_key(provenance))
     if not isinstance(source_entry, dict):
         return None
@@ -123,7 +122,7 @@ def blocker_status_for_source(
     return None
 
 
-def mark_source_blocker_clear(manifest: dict[str, object], provenance, source_reference) -> None:
+def mark_source_blocker_clear(manifest: dict[str, Any], provenance, source_reference) -> None:
     manifest.setdefault("sources", {})[make_source_key(provenance)] = {
         "url": provenance.url,
         "resource_path": str(source_reference.resource_path)

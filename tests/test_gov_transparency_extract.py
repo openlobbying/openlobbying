@@ -1,7 +1,13 @@
+from __future__ import annotations
+
 import importlib.util
 import sys
 from datetime import date
 from pathlib import Path
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from datasets.gb.gov_transparency.types import Provenance as ProvenanceT
 
 
 def load_module(name: str, relative_path: str):
@@ -32,7 +38,7 @@ Provenance = types_module.Provenance
 NormalisedSheet = normalise_module.NormalisedSheet
 
 
-def make_provenance(collection_type: str, attachment_title: str) -> Provenance:
+def make_provenance(collection_type: str, attachment_title: str) -> ProvenanceT:
     return Provenance(
         department="cabinet-office",
         collection_type=collection_type,
@@ -270,7 +276,7 @@ def test_gift_emission_uses_non_numeric_amount_as_fallback_outcome_text():
         def __init__(self, schema_name: str):
             self.schema = type("Schema", (), {"name": schema_name})()
             self.id = None
-            self.props = {}
+            self.props: dict[str, list[Any]] = {}
 
         def add(self, key, value):
             self.props.setdefault(key, []).append(value)

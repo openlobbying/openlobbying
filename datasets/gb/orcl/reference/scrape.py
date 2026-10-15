@@ -7,7 +7,7 @@ from bs4 import BeautifulSoup
 
 
 def extract_data(soup):
-    results = []
+    results: list[dict[str, str]] = []
     table = soup.find("table", class_="clrDataTable")
     if not table:
         return results
@@ -59,7 +59,7 @@ def scrape():
     page_num = 1
     while True:
         # Check for Next Page link
-        next_page_link = soup.find("a", string="Next Page")
+        next_page_link = soup.find("a", string="Next Page")  # type: ignore[call-overload]  # bs4 stubs lack a name+string overload
         if not next_page_link:
             print("[*] No 'Next Page' link found. Finished.")
             break

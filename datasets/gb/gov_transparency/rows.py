@@ -10,30 +10,36 @@ if TYPE_CHECKING:
     from .normalise import NormalisedSheet as NormalisedSheetT
     from .schema import Schema as SchemaT
 
-try:
+if TYPE_CHECKING:
     from .common import normalise_marker, should_skip_row
     from .fingerprint import detect_header_row
     from .normalise import NormalisedSheet
     from .schema import Schema
-except ImportError as err:
-    common_spec = importlib.util.spec_from_file_location(
-        f"{__name__}.common",
-        Path(__file__).with_name("common.py"),
-    )
-    if common_spec is None or common_spec.loader is None:
-        raise RuntimeError("Could not load gov-transparency common module") from err
-    common_module = importlib.util.module_from_spec(common_spec)
-    sys.modules[common_spec.name] = common_module
-    common_spec.loader.exec_module(common_module)
-    normalise_marker = common_module.normalise_marker
-    should_skip_row = common_module.should_skip_row
-    detect_header_row = common_module.load_sibling_module(
-        __file__, __name__, "fingerprint"
-    ).detect_header_row
-    NormalisedSheet = common_module.load_sibling_module(
-        __file__, __name__, "normalise"
-    ).NormalisedSheet
-    Schema = common_module.load_sibling_module(__file__, __name__, "schema").Schema
+else:
+    try:
+        from .common import normalise_marker, should_skip_row
+        from .fingerprint import detect_header_row
+        from .normalise import NormalisedSheet
+        from .schema import Schema
+    except ImportError as err:
+        common_spec = importlib.util.spec_from_file_location(
+            f"{__name__}.common",
+            Path(__file__).with_name("common.py"),
+        )
+        if common_spec is None or common_spec.loader is None:
+            raise RuntimeError("Could not load gov-transparency common module") from err
+        common_module = importlib.util.module_from_spec(common_spec)
+        sys.modules[common_spec.name] = common_module
+        common_spec.loader.exec_module(common_module)
+        normalise_marker = common_module.normalise_marker
+        should_skip_row = common_module.should_skip_row
+        detect_header_row = common_module.load_sibling_module(
+            __file__, __name__, "fingerprint"
+        ).detect_header_row
+        NormalisedSheet = common_module.load_sibling_module(
+            __file__, __name__, "normalise"
+        ).NormalisedSheet
+        Schema = common_module.load_sibling_module(__file__, __name__, "schema").Schema
 
 
 @dataclass(frozen=True)

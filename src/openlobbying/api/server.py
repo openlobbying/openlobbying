@@ -621,7 +621,7 @@ def list_entities(
         return {"results": [], "total": 0}
 
     allowed_schemata = _schema_filter_values(schema) if schema else None
-    results = []
+    results: list[dict[str, Any]] = []
 
     # Python-side filtering for simplicity in this MVP
     # Optimization: use SQL-side filtering if performance becomes an issue

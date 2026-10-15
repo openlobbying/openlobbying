@@ -6,6 +6,7 @@ import sys
 from datetime import date
 from io import StringIO
 from pathlib import Path
+from typing import Any
 
 from org_id import make_hashed_id
 
@@ -16,7 +17,8 @@ SPEC = importlib.util.spec_from_file_location(
 )
 assert SPEC is not None
 assert SPEC.loader is not None
-MODULE = importlib.util.module_from_spec(SPEC)
+# Any, not ModuleType: tests patch module attributes such as load_schema.
+MODULE: Any = importlib.util.module_from_spec(SPEC)
 MODULE.__package__ = "muckrake.crawler.gb.gov_transparency"
 sys.modules[SPEC.name] = MODULE
 SPEC.loader.exec_module(MODULE)
@@ -50,7 +52,7 @@ parse_period = MODULE.parse_period
 
 class DummyDataset:
     def __init__(self, tmp_path):
-        self._data = {"collections": ["example-collection"]}
+        self._data: dict[str, Any] = {"collections": ["example-collection"]}
         self.failed_units = []
         self.incomplete = []
         self.prefix = "gb-gov"
@@ -529,12 +531,11 @@ def test_missing_attachment_is_a_completeness_warning(tmp_path):
 
     from requests import HTTPError
 
-    dataset = DummyDataset(tmp_path)
+    class GoneDataset(DummyDataset):
+        def fetch_resource(self, name: str, url: str) -> Path:
+            raise HTTPError(response=Mock(status_code=410))
 
-    def gone(name, url):
-        raise HTTPError(response=Mock(status_code=410))
-
-    dataset.fetch_resource = gone
+    dataset = GoneDataset(tmp_path)
     url = "https://assets.publishing.service.gov.uk/gone.csv"
     assert MODULE.fetch_resource_or_warn(dataset, "gone.csv", url) is None
     assert dataset.incomplete == [{"reason": "attachment missing", "url": url, "status": 410}]

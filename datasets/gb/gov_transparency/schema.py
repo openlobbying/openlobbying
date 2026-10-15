@@ -12,23 +12,27 @@ from typing import TYPE_CHECKING, Any
 if TYPE_CHECKING:
     from .normalise import NormalisedSheet as NormalisedSheetT
 
-try:
+if TYPE_CHECKING:
     from .common import load_sibling_module
     from .normalise import NormalisedSheet
-except ImportError as err:
-    common_spec = importlib.util.spec_from_file_location(
-        f"{__name__}.common",
-        Path(__file__).with_name("common.py"),
-    )
-    if common_spec is None or common_spec.loader is None:
-        raise RuntimeError("Could not load gov-transparency common module") from err
-    common_module = importlib.util.module_from_spec(common_spec)
-    sys.modules[common_spec.name] = common_module
-    common_spec.loader.exec_module(common_module)
-    load_sibling_module = common_module.load_sibling_module
-    NormalisedSheet = common_module.load_sibling_module(
-        __file__, __name__, "normalise"
-    ).NormalisedSheet
+else:
+    try:
+        from .common import load_sibling_module
+        from .normalise import NormalisedSheet
+    except ImportError as err:
+        common_spec = importlib.util.spec_from_file_location(
+            f"{__name__}.common",
+            Path(__file__).with_name("common.py"),
+        )
+        if common_spec is None or common_spec.loader is None:
+            raise RuntimeError("Could not load gov-transparency common module") from err
+        common_module = importlib.util.module_from_spec(common_spec)
+        sys.modules[common_spec.name] = common_module
+        common_spec.loader.exec_module(common_module)
+        load_sibling_module = common_module.load_sibling_module
+        NormalisedSheet = common_module.load_sibling_module(
+            __file__, __name__, "normalise"
+        ).NormalisedSheet
 
 SCHEMAS_DIR = Path(__file__).with_name("schemas")
 DEFAULT_NIL_RETURN_MARKERS = [

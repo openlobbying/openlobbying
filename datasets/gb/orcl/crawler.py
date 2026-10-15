@@ -1,5 +1,6 @@
 import json
 import re
+from typing import Any
 from urllib.parse import parse_qs, urlparse
 
 import requests
@@ -98,7 +99,7 @@ def crawl(context: Dataset):
     res.raise_for_status()
     soup = BeautifulSoup(res.text, "html.parser")
 
-    seen_profiles = set()
+    seen_profiles: set[str] = set()
 
     # Process Page 1
     process_page(context, session, soup, page_num=1, seen_profiles=seen_profiles)
@@ -177,7 +178,7 @@ def process_page(
 
 
 def extract_list_items(soup):
-    results = []
+    results: list[dict[str, str]] = []
     table = soup.find("table", class_="clrDataTable")
     if not table:
         return results
@@ -323,7 +324,7 @@ def process_lobbyist(context: Dataset, session: requests.Session, item):
 
 
 def extract_details(soup):
-    details = {
+    details: dict[str, Any] = {
         "address": None,
         "company_number": None,
         "clients": [],

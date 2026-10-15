@@ -46,3 +46,15 @@ select = ["E", "F", "I", "UP", "B"]
 [tool.ruff.lint.flake8-bugbear]
 # FastAPI parameter defaults such as `Query(None)` are evaluated once by design.
 extend-immutable-calls = ["fastapi.Query"]
+
+[tool.mypy]
+python_version = "3.13"
+check_untyped_defs = true
+warn_unused_ignores = true
+# Crawler directories aren't packages, and several hold a crawler.py.
+explicit_package_bases = true
+mypy_path = "src"
+
+[[tool.mypy.overrides]]
+module = ["odf.*", "openpyxl.*", "org_id.*", "pandas.*", "xlrd.*"]
+ignore_missing_imports = true

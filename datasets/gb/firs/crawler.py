@@ -15,7 +15,7 @@ BASE_URL = "https://foreign-influence-registration-scheme.service.gov.uk/public-
 
 def get_summary_block(soup, title: str):
     """Get a summary block by its title."""
-    title_element = soup.find("h2", class_="gi-summary-block__title", string=title)  # type: ignore
+    title_element = soup.find("h2", class_="gi-summary-block__title", string=title)
     if not title_element:
         return None
 
@@ -28,7 +28,7 @@ def extract_field_value(block, key_text: str) -> list[str] | None:
 
     Returns a list of values or None.
     """
-    key_element = block.find("dt", class_="gi-summary-blocklist__key", string=key_text)  # type: ignore
+    key_element = block.find("dt", class_="gi-summary-blocklist__key", string=key_text)
     if not key_element:
         return None
 
@@ -119,8 +119,7 @@ def crawl(dataset):
 
         registrant_address = extract_field_value(registrant_block, "Registered or main address")
         if registrant_address:
-            registrant_address = "\n".join(registrant_address)
-            lobbyist.add("address", registrant_address)
+            lobbyist.add("address", "\n".join(registrant_address))
 
         dataset.emit(lobbyist)
 

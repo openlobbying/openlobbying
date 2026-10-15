@@ -1,9 +1,15 @@
+from __future__ import annotations
+
 import importlib.util
 import sys
 from datetime import date
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from org_id import make_hashed_id
+
+if TYPE_CHECKING:
+    from datasets.gb.gov_transparency.types import Provenance as ProvenanceT
 
 
 def load_module(name: str, relative_path: str):
@@ -52,7 +58,7 @@ class DummyDataset:
         self.emitted.append(entity)
 
 
-def make_provenance(collection_type: str, url: str) -> Provenance:
+def make_provenance(collection_type: str, url: str) -> ProvenanceT:
     return Provenance(
         department="Cabinet Office",
         collection_type=collection_type,

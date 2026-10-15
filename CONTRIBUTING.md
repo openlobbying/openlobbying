@@ -14,6 +14,7 @@ Setup is in the [README](README.md): Prerequisites, then Quickstart.
 - This repo runs muckrake from `../muckrake`. Keep that checkout on the matching branch: `develop` for dev work, `main` for a release. CI checks out the muckrake branch with the same name as your PR's target.
 - Before pushing:
   - `uv run pytest` (crawler tests live in `tests/`)
+  - `uv run ruff check .`, `uv run ruff format --check .` and `uv run mypy src datasets tests scripts` (or `uv run pre-commit install` once, so ruff runs on each commit)
   - `npm run check` for any frontend change
   - `uv run python scripts/gen_api_docs.py` if you changed an API route (a test fails when `docs/api.md` is stale)
   - keep the README Quickstart and `scripts/quickstart.sh` in step; the Quickstart workflow runs the script on pull requests into `develop` and `main`

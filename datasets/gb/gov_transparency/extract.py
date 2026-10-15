@@ -11,29 +11,38 @@ if TYPE_CHECKING:
     from .schema import Schema as SchemaT
     from .types import Provenance as ProvenanceT
 
-try:
+if TYPE_CHECKING:
     from .date_rules import resolve_date
     from .normalise import NormalisedSheet
     from .rows import evaluate_rows
     from .schema import Schema
     from .types import Provenance
-except ImportError as err:
-    common_spec = importlib.util.spec_from_file_location(
-        f"{__name__}.common",
-        Path(__file__).with_name("common.py"),
-    )
-    if common_spec is None or common_spec.loader is None:
-        raise RuntimeError("Could not load gov-transparency common module") from err
-    common_module = importlib.util.module_from_spec(common_spec)
-    sys.modules[common_spec.name] = common_module
-    common_spec.loader.exec_module(common_module)
-    resolve_date = common_module.load_sibling_module(__file__, __name__, "date_rules").resolve_date
-    NormalisedSheet = common_module.load_sibling_module(
-        __file__, __name__, "normalise"
-    ).NormalisedSheet
-    evaluate_rows = common_module.load_sibling_module(__file__, __name__, "rows").evaluate_rows
-    Schema = common_module.load_sibling_module(__file__, __name__, "schema").Schema
-    Provenance = common_module.load_sibling_module(__file__, __name__, "types").Provenance
+else:
+    try:
+        from .date_rules import resolve_date
+        from .normalise import NormalisedSheet
+        from .rows import evaluate_rows
+        from .schema import Schema
+        from .types import Provenance
+    except ImportError as err:
+        common_spec = importlib.util.spec_from_file_location(
+            f"{__name__}.common",
+            Path(__file__).with_name("common.py"),
+        )
+        if common_spec is None or common_spec.loader is None:
+            raise RuntimeError("Could not load gov-transparency common module") from err
+        common_module = importlib.util.module_from_spec(common_spec)
+        sys.modules[common_spec.name] = common_module
+        common_spec.loader.exec_module(common_module)
+        resolve_date = common_module.load_sibling_module(
+            __file__, __name__, "date_rules"
+        ).resolve_date
+        NormalisedSheet = common_module.load_sibling_module(
+            __file__, __name__, "normalise"
+        ).NormalisedSheet
+        evaluate_rows = common_module.load_sibling_module(__file__, __name__, "rows").evaluate_rows
+        Schema = common_module.load_sibling_module(__file__, __name__, "schema").Schema
+        Provenance = common_module.load_sibling_module(__file__, __name__, "types").Provenance
 
 
 def extract(

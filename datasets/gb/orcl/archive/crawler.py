@@ -5,7 +5,10 @@ import pandas as pd
 import requests
 from bs4 import BeautifulSoup
 from muckrake.dataset import Dataset
-from muckrake.util import month_to_num, to_string
+
+# BUG: muckrake.util has no month_to_num, so importing this module raises ImportError.
+# The archive crawler has no config.yml, so muckrake never loads it.
+from muckrake.util import month_to_num, to_string  # type: ignore[attr-defined]
 
 SOURCE_URL = "https://orcl.my.site.com/CLR_Annual_Returns_Downloads"
 
@@ -18,12 +21,14 @@ def crawl(context: Dataset):
     res.raise_for_status()
     soup = BeautifulSoup(res.content, "lxml")
 
-    links = []
+    links: list[dict[str, str]] = []
     for a in soup.select(".downloadDropdown li a"):
         title = a.get_text(strip=True)
         url = a.get("href")
         if not url:
             continue
+        # "href" is not a multi-valued attribute, so bs4 never returns a list here.
+        assert not isinstance(url, list)
 
         # Parse date from title - try multiple patterns
         date_str = None
@@ -89,7 +94,7 @@ def process_file(context: Dataset, path: Path, date: str):
     """Process a single file and return list of relationships."""
     context.log.info(f"Processing {path.name}")
 
-    relationships = []
+    relationships: list[dict[str, str]] = []
 
     try:
         if path.suffix == ".xlsx":

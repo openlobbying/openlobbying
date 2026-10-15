@@ -64,7 +64,7 @@ Notes:
 
 ## Developing
 
-Install Python dependencies with `uv sync`. Run the tests with `uv run pytest` (a cold first run takes about 90 seconds, mostly imports).
+Install Python dependencies with `uv sync`. Run the tests with `uv run pytest` (a cold first run takes about 90 seconds, mostly imports). CI also runs `uv run ruff check .`, `uv run ruff format --check .` and `uv run mypy src datasets tests scripts`; `uv run pre-commit install` runs ruff on each commit.
 
 Install frontend dependencies with `npm ci`.
 

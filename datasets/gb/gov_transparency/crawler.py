@@ -18,7 +18,7 @@ if TYPE_CHECKING:
     from .trace import TraceWriter as TraceWriterT
     from .types import Provenance as ProvenanceT
 
-try:
+if TYPE_CHECKING:
     from .common import load_sibling_module, parse_period
     from .entities import emit_entities
     from .extract import extract
@@ -28,36 +28,47 @@ try:
     from .schema import load_schema, validate_schema
     from .trace import NullTraceWriter, TraceWriter
     from .types import Provenance
-except ImportError as err:
-    common_spec = importlib.util.spec_from_file_location(
-        f"{__name__}.common",
-        Path(__file__).with_name("common.py"),
-    )
-    if common_spec is None or common_spec.loader is None:
-        raise RuntimeError("Could not load gov-transparency common module") from err
-    common_module = importlib.util.module_from_spec(common_spec)
-    sys.modules[common_spec.name] = common_module
-    common_spec.loader.exec_module(common_module)
-    load_sibling_module = common_module.load_sibling_module
-    parse_period = common_module.parse_period
-    normalise_module = load_sibling_module(__file__, __name__, "normalise")
-    detect_file_format = normalise_module.detect_file_format
-    normalise = normalise_module.normalise
-    fingerprint_module = load_sibling_module(__file__, __name__, "fingerprint")
-    detect_header_row = fingerprint_module.detect_header_row
-    header_signature = fingerprint_module.header_signature
-    fingerprint = fingerprint_module.fingerprint
-    extract = load_sibling_module(__file__, __name__, "extract").extract
-    emit_entities = load_sibling_module(__file__, __name__, "entities").emit_entities
-    rows_module = load_sibling_module(__file__, __name__, "rows")
-    evaluate_rows = rows_module.evaluate_rows
-    schema_module = load_sibling_module(__file__, __name__, "schema")
-    load_schema = schema_module.load_schema
-    validate_schema = schema_module.validate_schema
-    trace_module = load_sibling_module(__file__, __name__, "trace")
-    TraceWriter = trace_module.TraceWriter
-    NullTraceWriter = trace_module.NullTraceWriter
-    Provenance = load_sibling_module(__file__, __name__, "types").Provenance
+else:
+    try:
+        from .common import load_sibling_module, parse_period
+        from .entities import emit_entities
+        from .extract import extract
+        from .fingerprint import detect_header_row, fingerprint, header_signature
+        from .normalise import detect_file_format, normalise
+        from .rows import evaluate_rows
+        from .schema import load_schema, validate_schema
+        from .trace import NullTraceWriter, TraceWriter
+        from .types import Provenance
+    except ImportError as err:
+        common_spec = importlib.util.spec_from_file_location(
+            f"{__name__}.common",
+            Path(__file__).with_name("common.py"),
+        )
+        if common_spec is None or common_spec.loader is None:
+            raise RuntimeError("Could not load gov-transparency common module") from err
+        common_module = importlib.util.module_from_spec(common_spec)
+        sys.modules[common_spec.name] = common_module
+        common_spec.loader.exec_module(common_module)
+        load_sibling_module = common_module.load_sibling_module
+        parse_period = common_module.parse_period
+        normalise_module = load_sibling_module(__file__, __name__, "normalise")
+        detect_file_format = normalise_module.detect_file_format
+        normalise = normalise_module.normalise
+        fingerprint_module = load_sibling_module(__file__, __name__, "fingerprint")
+        detect_header_row = fingerprint_module.detect_header_row
+        header_signature = fingerprint_module.header_signature
+        fingerprint = fingerprint_module.fingerprint
+        extract = load_sibling_module(__file__, __name__, "extract").extract
+        emit_entities = load_sibling_module(__file__, __name__, "entities").emit_entities
+        rows_module = load_sibling_module(__file__, __name__, "rows")
+        evaluate_rows = rows_module.evaluate_rows
+        schema_module = load_sibling_module(__file__, __name__, "schema")
+        load_schema = schema_module.load_schema
+        validate_schema = schema_module.validate_schema
+        trace_module = load_sibling_module(__file__, __name__, "trace")
+        TraceWriter = trace_module.TraceWriter
+        NullTraceWriter = trace_module.NullTraceWriter
+        Provenance = load_sibling_module(__file__, __name__, "types").Provenance
 
 GOVUK_URL = "https://www.gov.uk"
 GOVUK_CONTENT_API_URL = "https://www.gov.uk/api/content"
@@ -571,7 +582,7 @@ def process_sheet(
     header_preview = header_signature(sheet)
     schema = load_schema(sheet_fingerprint)
 
-    trace_record = {
+    trace_record: dict[str, Any] = {
         "type": "sheet",
         "url": provenance.url,
         "resource_path": str(resource_path) if resource_path is not None else None,
