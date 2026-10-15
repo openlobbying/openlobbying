@@ -28,7 +28,7 @@ Work is tracked in this repo's issues and on the maintainers' [project board](ht
 
 ## Quickstart
 
-These steps crawl one small dataset, build and publish an ingest from it, and start the API on it. They use SQLite only (no Docker or Postgres). [`scripts/quickstart.sh`](scripts/quickstart.sh) runs the same pipeline steps; for its API checks it searches for the first company in the published data instead of a fixed name. The [`.github/workflows/quickstart.yml`](.github/workflows/quickstart.yml) workflow runs the script on pull requests into `develop` and `main`, so if you change the steps here, change the script too.
+These steps crawl one small dataset, build and publish an ingest from it, and start the API on it. They use SQLite only (no Docker or Postgres). [`scripts/quickstart.sh`](scripts/quickstart.sh) runs the same pipeline steps; for its API checks it searches for the first entity in the published data instead of a fixed name. Set `QUICKSTART_DATASET` to crawl a different dataset. The [`.github/workflows/quickstart.yml`](.github/workflows/quickstart.yml) workflow runs the script on pull requests into `develop` and `main` with `gb_prca`, because the FIRS register blocks GitHub's runners. If you change the steps here, change the script too.
 
 ```sh
 cd openlobbying

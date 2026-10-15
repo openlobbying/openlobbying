@@ -1,9 +1,10 @@
 name: Quickstart
 
 # Runs the README Quickstart (scripts/quickstart.sh) from a fresh checkout:
-# crawl gb_firs into SQLite, build and publish an ingest, start the API and
-# query it. gb_firs is the smallest dataset (a few seconds, one site) but it is
-# fetched live, so an outage at the FIRS register fails this job.
+# crawl one dataset into SQLite, build and publish an ingest, start the API and
+# query it. The README uses gb_firs, but the FIRS register returns 403 to GitHub
+# Actions runners, so CI crawls gb_prca (about 45 s), fetched live: an outage at
+# the PRCA register fails this job.
 
 on:
   pull_request:
@@ -13,10 +14,6 @@ on:
 jobs:
   quickstart:
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        dataset: [gb_firs, gb_committees, gb_prca]
 
     steps:
       - name: Check out repository
@@ -46,5 +43,5 @@ jobs:
       - name: Quickstart
         working-directory: openlobbying
         env:
-          QUICKSTART_DATASET: ${{ matrix.dataset }}
+          QUICKSTART_DATASET: gb_prca
         run: scripts/quickstart.sh
