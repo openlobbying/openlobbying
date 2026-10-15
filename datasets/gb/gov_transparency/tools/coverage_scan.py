@@ -3,11 +3,15 @@ from __future__ import annotations
 import json
 from collections import Counter, defaultdict
 from pathlib import Path
+from typing import Any
 
-from datasets.gb.gov_transparency.fingerprint import detect_header_row, fingerprint, header_signature
+from datasets.gb.gov_transparency.fingerprint import (
+    detect_header_row,
+    fingerprint,
+    header_signature,
+)
 from datasets.gb.gov_transparency.normalise import normalise
 from datasets.gb.gov_transparency.schema import load_schema
-
 
 ROOT = Path("data/datasets/gb_gov_transparency/resources")
 OUT = Path("datasets/gb/gov_transparency/baseline/current_coverage_report.json")
@@ -15,9 +19,9 @@ OUT = Path("datasets/gb/gov_transparency/baseline/current_coverage_report.json")
 
 def main() -> None:
     matched = 0
-    unknown = Counter()
-    matched_fps = Counter()
-    samples = defaultdict(list)
+    unknown: Counter[str] = Counter()
+    matched_fps: Counter[str] = Counter()
+    samples: defaultdict[str, list[dict[str, Any]]] = defaultdict(list)
     total_sheets = 0
     total_files = 0
     parse_errors: list[dict[str, str]] = []

@@ -1,7 +1,7 @@
-import requests
-from bs4 import BeautifulSoup
 import csv
 
+import requests
+from bs4 import BeautifulSoup
 from muckrake.util import parse_date
 
 BASE_URL = "https://www.lobbying.scot/SPS/"
@@ -78,9 +78,9 @@ def crawl(dataset):
         raise ValueError("Missing registrants table")
 
     # loop through rows
-    for row in registrants_table.select("tr")[1:]:
+    for table_row in registrants_table.select("tr")[1:]:
         # extract org ID
-        org_link = row.select_one("td a")
+        org_link = table_row.select_one("td a")
         if org_link is None:
             raise ValueError("Missing registrant link")
         href = org_link.get("href")
@@ -91,8 +91,8 @@ def crawl(dataset):
             raise ValueError("Missing registrant ID")
 
         # create registrant
-        # lobbying_role = row.select_one('[data-title="Lobbying Role"] span').text.strip()
-        registrant_type_tag = row.select_one('[data-title="Registrant Type"] span')
+        # lobbying_role = table_row.select_one('[data-title="Lobbying Role"] span').text.strip()
+        registrant_type_tag = table_row.select_one('[data-title="Registrant Type"] span')
         if registrant_type_tag is None:
             raise ValueError("Missing registrant type")
         registrant_type = registrant_type_tag.text.strip()
@@ -120,22 +120,22 @@ def crawl(dataset):
         registrant.id = dataset.make_id("scottish_lobbying_register", org_id)
 
         # get business name (if it exists)
-        lobbyist_name_tag = row.select_one('[data-title="Name of Lobbyist"] span')
+        lobbyist_name_tag = table_row.select_one('[data-title="Name of Lobbyist"] span')
         if lobbyist_name_tag is None:
             raise ValueError(f"Missing lobbyist name for registrant {org_id}")
         lobbyist_name = lobbyist_name_tag.text.strip()
         registrant.add("name", lobbyist_name)
 
-        business_name_tag = row.select_one('[data-title="Business Name"] span')
+        business_name_tag = table_row.select_one('[data-title="Business Name"] span')
         business_name = business_name_tag.text.strip() if business_name_tag else ""
         if business_name:
             registrant.add("alias", business_name)
-        company_name_tag = row.select_one('[data-title="Company Name"] span')
+        company_name_tag = table_row.select_one('[data-title="Company Name"] span')
         company_name = company_name_tag.text.strip() if company_name_tag else ""
         if company_name:
             registrant.add("alias", company_name)
 
-        subject_area_tag = row.select_one('[data-title="Registrant Subject Area"] span')
+        subject_area_tag = table_row.select_one('[data-title="Registrant Subject Area"] span')
         subject_area = subject_area_tag.text.strip() if subject_area_tag else ""
         if subject_area:
             registrant.add("sector", subject_area)
@@ -157,19 +157,21 @@ def crawl(dataset):
             field = details_soup.select_one(f'input[name="Line{n}"]')
             if field is None:
                 break
-            address_lines.append(field.get("value"))
+            line = field.get("value")
+            # "value" is not a multi-valued attribute, so bs4 never returns a list here.
+            assert not isinstance(line, list)
+            address_lines.append(line)
             n += 1
         postcode = details_soup.select_one('input[name="PostCode"]')
         postcode_value = postcode.get("value") if postcode else None
+        assert not isinstance(postcode_value, list)
         all_parts = address_lines + ([postcode_value] if postcode_value else [])
         if any(all_parts):
             address = "\n".join(filter(None, all_parts))
             registrant.add("address", address)
 
         responsible_person = details_soup.select_one('input[name="ResponsiblePerson"]')
-        responsible_person_entry = (
-            responsible_person.get("value") if responsible_person else None
-        )
+        responsible_person_entry = responsible_person.get("value") if responsible_person else None
         if responsible_person_entry:
             responsible_person = dataset.make("Person")
             responsible_person.id = dataset.make_id(
@@ -193,7 +195,9 @@ def crawl(dataset):
 
     # now let's get the individual meetings
     # https://www.lobbying.scot/SPS/Search/SearchResult?id=a1c36112-6b57-47ff-9228-86b086ac2996
-    # returns_page = dataset.fetch_html(f"{BASE_URL}/Search/SearchResult?id={org_id}", cache_days=30)
+    # returns_page = dataset.fetch_html(
+    #     f"{BASE_URL}/Search/SearchResult?id={org_id}", cache_days=30
+    # )
     # use the CSVs, maybe download the unfiltered one and do it all in one go?
 
     information_returns_payload = {
@@ -231,9 +235,7 @@ def crawl(dataset):
     if export_form is None:
         raise ValueError("Missing export form on information returns results page")
 
-    export_token_input = export_form.select_one(
-        'input[name="__RequestVerificationToken"]'
-    )
+    export_token_input = export_form.select_one('input[name="__RequestVerificationToken"]')
     if export_token_input is None:
         raise ValueError("Missing export token on information returns results page")
 
@@ -275,7 +277,7 @@ def crawl(dataset):
         timeout=300,
     )
 
-    with open(path, "r", encoding="utf-8", newline="") as f:
+    with open(path, encoding="utf-8", newline="") as f:
         dataset.log.info("Processing information returns")
         reader = csv.DictReader(f, fieldnames=INFORMATION_RETURNS_COLUMNS)
         next(reader, None)
@@ -318,25 +320,24 @@ def crawl(dataset):
                 meeting.add("location", location)
 
             # create hosts (politicians)
-            persons_lobbied = row.get("Persons lobbied")
+            persons_lobbied_value = row.get("Persons lobbied")
             persons_lobbied = (
-                [p.strip() for p in persons_lobbied.split(";")]
-                if persons_lobbied
+                [p.strip() for p in persons_lobbied_value.split(";")]
+                if persons_lobbied_value
                 else []
             )
 
-            persons_lobbied_roles = row.get("Person lobbied roles")
-            persons_lobbied_roles = (
-                [r.strip() for r in persons_lobbied_roles.split(";")]
-                if persons_lobbied_roles
+            persons_lobbied_roles_value = row.get("Person lobbied roles")
+            # Suspected gap: the roles are parsed but never emitted.
+            persons_lobbied_roles = (  # noqa: F841
+                [r.strip() for r in persons_lobbied_roles_value.split(";")]
+                if persons_lobbied_roles_value
                 else []
             )
 
-            for i, name in enumerate(persons_lobbied):
+            for name in persons_lobbied:
                 politician = dataset.make("Person")
-                politician.id = dataset.make_id(
-                    "scottish_lobbying_register", "politician", name
-                )
+                politician.id = dataset.make_id("scottish_lobbying_register", "politician", name)
                 politician.add("name", name)
                 politician.add("jurisdiction", "gb-sct")
                 politician.add("topics", "role.pep")
@@ -346,9 +347,7 @@ def crawl(dataset):
 
             # create meeting participants
             registrant_name = row.get("Registrant name")
-            undertaken_on_registrants_behalf = row.get(
-                "Undertaken on registrants behalf"
-            )
+            undertaken_on_registrants_behalf = row.get("Undertaken on registrants behalf")
             if undertaken_on_registrants_behalf == "No":
                 # create lobbyist
                 lobbyist = dataset.make("Organization")
@@ -363,9 +362,7 @@ def crawl(dataset):
                 # create client
                 client = dataset.make("Organization")
                 client_name = row.get("Client name")
-                client.id = dataset.make_id(
-                    "scottish_lobbying_register", "client", client_name
-                )
+                client.id = dataset.make_id("scottish_lobbying_register", "client", client_name)
                 client.add("name", client_name)
                 dataset.emit(client)
                 meeting.add("involved", client)
@@ -381,9 +378,9 @@ def crawl(dataset):
                 dataset.emit(lobbying_relationship)
 
                 # add lobbyist employment
-                employees = row.get("Lobbyist names")
+                employees_value = row.get("Lobbyist names")
                 employees = (
-                    [e.strip() for e in employees.split(";")] if employees else []
+                    [e.strip() for e in employees_value.split(";")] if employees_value else []
                 )
                 for employee_name in employees:
                     employee = dataset.make("Person")

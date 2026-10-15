@@ -1,0 +1,108 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [develop, main]
+  push:
+    branches: [develop, main]
+
+jobs:
+  python:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+        with:
+          path: openlobbying
+
+      # muckrake is an editable path dependency (../muckrake); test against the
+      # muckrake branch matching this one's target (develop or main).
+      - name: Check out muckrake
+        uses: actions/checkout@v5
+        with:
+          repository: openlobbying/muckrake
+          ref: ${{ github.base_ref || github.ref_name }}
+          path: muckrake
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+
+      # plyvel (LevelDB) and pyicu (ICU) are sdist-only and compile from source.
+      - name: Install system dependencies
+        run: sudo apt-get update && sudo apt-get install -y libleveldb-dev libicu-dev pkg-config
+
+      # --locked fails if uv.lock has drifted from pyproject.toml.
+      - name: Install dependencies
+        working-directory: openlobbying
+        run: uv sync --locked
+
+      - name: Lint
+        working-directory: openlobbying
+        run: |
+          uv run ruff check .
+          uv run ruff format --check .
+
+      - name: Type-check
+        working-directory: openlobbying
+        run: uv run mypy src datasets tests scripts
+
+      - name: Test
+        working-directory: openlobbying
+        run: uv run pytest
+
+  frontend:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+
+      - name: Set up Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type check
+        run: npm run check
+
+      # The auth module requires these at import time; the build never connects.
+      - name: Build
+        run: npm run build
+        env:
+          MUCKRAKE_DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
+          BETTER_AUTH_SECRET: ci-build-only
+
+  links:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+
+      # Checks links in every Markdown file, including relative links to files in
+      # this repo. The openlobbying/docs repo and the org project boards are
+      # private, so the workflow token gets a 404 for them; they are excluded.
+      # .lycheeignore lists sites that block CI runners. datasets_parked/ holds
+      # unmaintained stubs and isn't checked.
+      - name: Check Markdown links
+        uses: lycheeverse/lychee-action@e7477775783ea5526144ba13e8db5eec57747ce8 # v2.9.0
+        with:
+          args: >-
+            --no-progress
+            --exclude-loopback
+            --exclude '^https://github\.com/openlobbying/docs(/|$)'
+            --exclude '^https://github\.com/orgs/openlobbying/projects/'
+            --exclude-path node_modules
+            --exclude-path datasets_parked
+            --max-retries 3
+            './**/*.md'

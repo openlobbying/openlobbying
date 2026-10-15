@@ -10,16 +10,15 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 from urllib.parse import urljoin, urlparse
 
-from requests import HTTPError
-
 from muckrake.dataset import Dataset
+from requests import HTTPError
 
 if TYPE_CHECKING:
     from .normalise import NormalisedSheet as NormalisedSheetT
     from .trace import TraceWriter as TraceWriterT
     from .types import Provenance as ProvenanceT
 
-try:
+if TYPE_CHECKING:
     from .common import load_sibling_module, parse_period
     from .entities import emit_entities
     from .extract import extract
@@ -29,36 +28,47 @@ try:
     from .schema import load_schema, validate_schema
     from .trace import NullTraceWriter, TraceWriter
     from .types import Provenance
-except ImportError:
-    common_spec = importlib.util.spec_from_file_location(
-        f"{__name__}.common",
-        Path(__file__).with_name("common.py"),
-    )
-    if common_spec is None or common_spec.loader is None:
-        raise RuntimeError("Could not load gov-transparency common module")
-    common_module = importlib.util.module_from_spec(common_spec)
-    sys.modules[common_spec.name] = common_module
-    common_spec.loader.exec_module(common_module)
-    load_sibling_module = common_module.load_sibling_module
-    parse_period = common_module.parse_period
-    normalise_module = load_sibling_module(__file__, __name__, "normalise")
-    detect_file_format = normalise_module.detect_file_format
-    normalise = normalise_module.normalise
-    fingerprint_module = load_sibling_module(__file__, __name__, "fingerprint")
-    detect_header_row = fingerprint_module.detect_header_row
-    header_signature = fingerprint_module.header_signature
-    fingerprint = fingerprint_module.fingerprint
-    extract = load_sibling_module(__file__, __name__, "extract").extract
-    emit_entities = load_sibling_module(__file__, __name__, "entities").emit_entities
-    rows_module = load_sibling_module(__file__, __name__, "rows")
-    evaluate_rows = rows_module.evaluate_rows
-    schema_module = load_sibling_module(__file__, __name__, "schema")
-    load_schema = schema_module.load_schema
-    validate_schema = schema_module.validate_schema
-    trace_module = load_sibling_module(__file__, __name__, "trace")
-    TraceWriter = trace_module.TraceWriter
-    NullTraceWriter = trace_module.NullTraceWriter
-    Provenance = load_sibling_module(__file__, __name__, "types").Provenance
+else:
+    try:
+        from .common import load_sibling_module, parse_period
+        from .entities import emit_entities
+        from .extract import extract
+        from .fingerprint import detect_header_row, fingerprint, header_signature
+        from .normalise import detect_file_format, normalise
+        from .rows import evaluate_rows
+        from .schema import load_schema, validate_schema
+        from .trace import NullTraceWriter, TraceWriter
+        from .types import Provenance
+    except ImportError as err:
+        common_spec = importlib.util.spec_from_file_location(
+            f"{__name__}.common",
+            Path(__file__).with_name("common.py"),
+        )
+        if common_spec is None or common_spec.loader is None:
+            raise RuntimeError("Could not load gov-transparency common module") from err
+        common_module = importlib.util.module_from_spec(common_spec)
+        sys.modules[common_spec.name] = common_module
+        common_spec.loader.exec_module(common_module)
+        load_sibling_module = common_module.load_sibling_module
+        parse_period = common_module.parse_period
+        normalise_module = load_sibling_module(__file__, __name__, "normalise")
+        detect_file_format = normalise_module.detect_file_format
+        normalise = normalise_module.normalise
+        fingerprint_module = load_sibling_module(__file__, __name__, "fingerprint")
+        detect_header_row = fingerprint_module.detect_header_row
+        header_signature = fingerprint_module.header_signature
+        fingerprint = fingerprint_module.fingerprint
+        extract = load_sibling_module(__file__, __name__, "extract").extract
+        emit_entities = load_sibling_module(__file__, __name__, "entities").emit_entities
+        rows_module = load_sibling_module(__file__, __name__, "rows")
+        evaluate_rows = rows_module.evaluate_rows
+        schema_module = load_sibling_module(__file__, __name__, "schema")
+        load_schema = schema_module.load_schema
+        validate_schema = schema_module.validate_schema
+        trace_module = load_sibling_module(__file__, __name__, "trace")
+        TraceWriter = trace_module.TraceWriter
+        NullTraceWriter = trace_module.NullTraceWriter
+        Provenance = load_sibling_module(__file__, __name__, "types").Provenance
 
 GOVUK_URL = "https://www.gov.uk"
 GOVUK_CONTENT_API_URL = "https://www.gov.uk/api/content"
@@ -103,11 +113,19 @@ def iter_collection_configs(dataset: Dataset):
             raise ValueError("each gov-transparency department must define a non-empty name")
         collection_urls = department.get("collection_urls", [])
         if not isinstance(collection_urls, list):
-            raise ValueError(f"gov-transparency department '{department_name}' must define collection_urls as a list")
+            raise ValueError(
+                f"gov-transparency department '{department_name}' "
+                "must define collection_urls as a list"
+            )
         for collection_url in collection_urls:
             if not isinstance(collection_url, str) or not collection_url.strip():
-                raise ValueError(f"gov-transparency department '{department_name}' collection_urls must contain only strings")
-            yield CollectionConfig(department=department_name, collection_url=collection_url.strip())
+                raise ValueError(
+                    f"gov-transparency department '{department_name}' "
+                    "collection_urls must contain only strings"
+                )
+            yield CollectionConfig(
+                department=department_name, collection_url=collection_url.strip()
+            )
 
 
 def make_content_api_url(value: str) -> str:
@@ -128,7 +146,9 @@ def fetch_json_or_warn(dataset: Dataset, url: str, label: str):
         return dataset.fetch_json(url, cache_days=CONTENT_CACHE_DAYS)
     except HTTPError as exc:
         if exc.response is not None and exc.response.status_code in [404, 410]:
-            dataset.log.warning("Skipping missing %s: %s", label, url)
+            dataset.warn_incomplete(
+                "GOV.UK content missing", label=label, url=url, status=exc.response.status_code
+            )
             return None
         raise
 
@@ -138,11 +158,13 @@ def fetch_resource_or_warn(dataset: Dataset, name: str, url: str):
         return dataset.fetch_resource(name, url)
     except HTTPError as exc:
         if exc.response is not None and exc.response.status_code in [404, 410]:
-            dataset.log.warning("Skipping missing attachment: %s", url)
+            dataset.warn_incomplete("attachment missing", url=url, status=exc.response.status_code)
             return None
         raise
 
 
+# The incremental manifest is working state for the schema-authoring tools
+# (tools/next_blocker, tools/runner). The crawl itself does not read or write it.
 def incremental_manifest_path(dataset: Dataset) -> Path:
     return dataset.data_path / "incremental-manifest.json"
 
@@ -186,7 +208,7 @@ def schema_registry_signature() -> str:
     return digest.hexdigest()
 
 
-def make_source_key(provenance: "ProvenanceT") -> str:
+def make_source_key(provenance: ProvenanceT) -> str:
     return provenance.url
 
 
@@ -197,7 +219,9 @@ def make_source_signature(resource_path: Path | None, data: bytes | None) -> str
     return f"bytes:{digest}:{len(data)}"
 
 
-def load_source_reference(dataset: Dataset, filename: str, provenance: "ProvenanceT") -> SourceReference:
+def load_source_reference(
+    dataset: Dataset, filename: str, provenance: ProvenanceT
+) -> SourceReference:
     data, resource_path, fetch_status = fetch_source_bytes(dataset, filename, provenance)
     return SourceReference(
         data=data,
@@ -209,7 +233,7 @@ def load_source_reference(dataset: Dataset, filename: str, provenance: "Provenan
 
 def should_skip_source(
     manifest: dict[str, Any],
-    provenance: "ProvenanceT",
+    provenance: ProvenanceT,
     source_reference: SourceReference,
 ) -> bool:
     source_entry = manifest.get("sources", {}).get(make_source_key(provenance))
@@ -220,26 +244,6 @@ def should_skip_source(
         and source_entry.get("schema_registry_signature") == schema_registry_signature()
         and source_entry.get("status") == "processed"
     )
-
-
-def update_manifest_for_source(
-    manifest: dict[str, Any],
-    provenance: "ProvenanceT",
-    source_reference: SourceReference,
-    *,
-    status: str,
-    file_format: str | None,
-    sheet_fingerprints: list[str] | None = None,
-) -> None:
-    manifest.setdefault("sources", {})[make_source_key(provenance)] = {
-        "url": provenance.url,
-        "resource_path": str(source_reference.resource_path) if source_reference.resource_path is not None else None,
-        "source_signature": source_reference.source_signature,
-        "schema_registry_signature": schema_registry_signature(),
-        "status": status,
-        "file_format": file_format,
-        "sheet_fingerprints": sheet_fingerprints or [],
-    }
 
 
 def get_attachment_filename(attachment: dict, publication_path: str) -> str:
@@ -275,7 +279,7 @@ def build_provenance(
     publication: dict,
     attachment_title: str,
     source_url: str,
-) -> "ProvenanceT":
+) -> ProvenanceT:
     title = publication_title(publication, publication_path)
     period_start, period_end = parse_period(title)
     if period_start is None and period_end is None:
@@ -291,14 +295,21 @@ def build_provenance(
     )
 
 
-def iter_publication_sources(department: str, collection_url: str, publication_path: str, publication: dict):
+def iter_publication_sources(
+    department: str, collection_url: str, publication_path: str, publication: dict
+):
     details = publication.get("details", {})
     if not isinstance(details, dict):
-        raise ValueError(f"Publication API response for {publication_path} must define details as an object")
+        raise ValueError(
+            f"Publication API response for {publication_path} must define details as an object"
+        )
 
     attachments = details.get("attachments", [])
     if not isinstance(attachments, list):
-        raise ValueError(f"Publication API response for {publication_path} must define details.attachments as a list")
+        raise ValueError(
+            f"Publication API response for {publication_path} "
+            "must define details.attachments as a list"
+        )
 
     yielded_attachment = False
     for attachment in attachments:
@@ -312,13 +323,16 @@ def iter_publication_sources(department: str, collection_url: str, publication_p
         attachment_title = attachment.get("title")
         if not isinstance(attachment_title, str) or not attachment_title.strip():
             attachment_title = get_attachment_filename(attachment, publication_path)
-        yield get_attachment_filename(attachment, publication_path), build_provenance(
-            department,
-            collection_url,
-            publication_path,
-            publication,
-            attachment_title.strip(),
-            source_url,
+        yield (
+            get_attachment_filename(attachment, publication_path),
+            build_provenance(
+                department,
+                collection_url,
+                publication_path,
+                publication,
+                attachment_title.strip(),
+                source_url,
+            ),
         )
 
     if yielded_attachment:
@@ -327,17 +341,22 @@ def iter_publication_sources(department: str, collection_url: str, publication_p
     publication_url = urljoin(GOVUK_URL, publication_path)
     title = publication_title(publication, publication_path)
     publication_slug = Path(publication_path.rstrip("/")).name or "publication"
-    yield f"{publication_slug}.html", build_provenance(
-        department,
-        collection_url,
-        publication_path,
-        publication,
-        title,
-        publication_url,
+    yield (
+        f"{publication_slug}.html",
+        build_provenance(
+            department,
+            collection_url,
+            publication_path,
+            publication,
+            title,
+            publication_url,
+        ),
     )
 
 
-def fetch_source_bytes(dataset: Dataset, filename: str, provenance: "ProvenanceT") -> tuple[bytes | None, Path | None, str]:
+def fetch_source_bytes(
+    dataset: Dataset, filename: str, provenance: ProvenanceT
+) -> tuple[bytes | None, Path | None, str]:
     suffix = Path(filename).suffix.lower()
     if suffix in {".html", ".htm"}:
         text = dataset.fetch_text(provenance.url, cache_days=RESOURCE_CACHE_DAYS)
@@ -346,7 +365,13 @@ def fetch_source_bytes(dataset: Dataset, filename: str, provenance: "ProvenanceT
         return text.encode("utf-8"), None, "normalised"
 
     resource_name = "/".join(
-        part for part in [provenance.collection_type, Path(urlparse(provenance.url).path).parent.name, filename] if part
+        part
+        for part in [
+            provenance.collection_type,
+            Path(urlparse(provenance.url).path).parent.name,
+            filename,
+        ]
+        if part
     )
     path = fetch_resource_or_warn(dataset, resource_name, provenance.url)
     if path is None:
@@ -356,9 +381,9 @@ def fetch_source_bytes(dataset: Dataset, filename: str, provenance: "ProvenanceT
 
 def report_unknown_fingerprint(
     dataset: Dataset,
-    provenance: "ProvenanceT",
+    provenance: ProvenanceT,
     resource_path: Path | None,
-    sheet: "NormalisedSheetT",
+    sheet: NormalisedSheetT,
     sheet_fingerprint: str,
 ) -> None:
     dataset.log.warning("UNKNOWN FINGERPRINT: %s", sheet_fingerprint)
@@ -385,7 +410,9 @@ def format_sheet_preview(rows: list[list[str]]) -> list[str]:
     column_widths = [max(len(row[index]) for row in padded) for index in range(width)]
     output = []
     for row in padded:
-        output.append(" | ".join(row[index].ljust(column_widths[index]) for index in range(width)).rstrip())
+        output.append(
+            " | ".join(row[index].ljust(column_widths[index]) for index in range(width)).rstrip()
+        )
     return output
 
 
@@ -396,16 +423,6 @@ def last_non_empty_index(row: list[str]) -> int:
     return -1
 
 
-def should_fail_on_unknown(dataset: Dataset) -> bool:
-    value = dataset._data.get("fail_on_unknown", True)
-    return bool(value)
-
-
-def should_continue_on_error(dataset: Dataset) -> bool:
-    value = dataset._data.get("continue_on_error", False)
-    return bool(value)
-
-
 def should_write_trace(dataset: Dataset) -> bool:
     value = dataset._data.get("trace_enabled", False)
     return bool(value)
@@ -414,120 +431,107 @@ def should_write_trace(dataset: Dataset) -> bool:
 def crawl(dataset: Dataset):
     trace_path = dataset.data_path / "trace" / "manifest.jsonl"
     trace = TraceWriter(trace_path) if should_write_trace(dataset) else NullTraceWriter()
-    incremental_manifest = load_incremental_manifest(dataset) if should_use_incremental_manifest(dataset) else None
     stats = {
         "sources_processed": 0,
-        "sources_skipped": 0,
         "sheets_processed": 0,
         "unknown_fingerprints": 0,
         "validated_sheets": 0,
         "entities_emitted": 0,
-        "source_errors": 0,
     }
 
+    # Each source file is a unit: one that fails (e.g. an unknown sheet layout) is
+    # skipped and recorded, and `muckrake crawl --retry-failed` re-runs it.
     try:
         for collection in iter_collection_configs(dataset):
             for filename, provenance in iter_collection_sources(dataset, collection):
-                try:
-                    process_source(dataset, filename, provenance, stats, trace, incremental_manifest)
-                except Exception as exc:
-                    stats["source_errors"] += 1
-                    write_source_trace(
-                        trace,
-                        provenance,
-                        filename,
-                        resource_path=None,
-                        file_format=None,
-                        status="source_error",
-                        error=str(exc),
-                    )
-                    if should_continue_on_error(dataset):
-                        dataset.log.exception("Failed to process source: %s", provenance.url)
-                        continue
-                    raise
+                dataset.run_unit(
+                    provenance.url, process_source, dataset, filename, provenance, stats, trace
+                )
     finally:
         trace.close()
-        if incremental_manifest is not None:
-            save_incremental_manifest(dataset, incremental_manifest)
 
     dataset.log.info(
-        "gov-transparency summary: %d sources, %d skipped, %d sheets, %d validated, %d unknown, %d entities, %d source_errors%s",
+        "gov-transparency summary: %d sources, %d sheets, %d validated, %d unknown, %d entities%s",
         stats["sources_processed"],
-        stats["sources_skipped"],
         stats["sheets_processed"],
         stats["validated_sheets"],
         stats["unknown_fingerprints"],
         stats["entities_emitted"],
-        stats["source_errors"],
         f" trace={trace_path}" if should_write_trace(dataset) else "",
     )
 
 
 def iter_collection_sources(dataset: Dataset, collection: CollectionConfig):
-    collection_data = fetch_json_or_warn(dataset, make_content_api_url(collection.collection_url), "collection")
+    collection_data = fetch_json_or_warn(
+        dataset, make_content_api_url(collection.collection_url), "collection"
+    )
     if collection_data is None:
         return
     if not isinstance(collection_data, dict):
-        raise ValueError(f"Expected a JSON object from GOV.UK collection API: {collection.collection_url}")
+        raise ValueError(
+            f"Expected a JSON object from GOV.UK collection API: {collection.collection_url}"
+        )
 
     links = collection_data.get("links", {})
     if not isinstance(links, dict):
-        raise ValueError(f"Collection API response for {collection.collection_url} must define links as an object")
+        raise ValueError(
+            f"Collection API response for {collection.collection_url} "
+            "must define links as an object"
+        )
     documents = links.get("documents", [])
     if not isinstance(documents, list):
-        raise ValueError(f"Collection API response for {collection.collection_url} must define links.documents as a list")
+        raise ValueError(
+            f"Collection API response for {collection.collection_url} "
+            "must define links.documents as a list"
+        )
 
     for document in documents:
         if not isinstance(document, dict):
-            raise ValueError(f"Collection document entry must be a mapping: {collection.collection_url}")
+            raise ValueError(
+                f"Collection document entry must be a mapping: {collection.collection_url}"
+            )
         publication_path = document.get("base_path")
         if not isinstance(publication_path, str) or not publication_path.strip():
-            raise ValueError(f"Collection API document is missing a base_path: {collection.collection_url}")
+            raise ValueError(
+                f"Collection API document is missing a base_path: {collection.collection_url}"
+            )
 
-        publication = fetch_json_or_warn(dataset, make_content_api_url(publication_path), f"publication {publication_path}")
+        publication = fetch_json_or_warn(
+            dataset, make_content_api_url(publication_path), f"publication {publication_path}"
+        )
         if publication is None:
             continue
         if not isinstance(publication, dict):
-            raise ValueError(f"Expected a JSON object from GOV.UK publication API: {publication_path}")
+            raise ValueError(
+                f"Expected a JSON object from GOV.UK publication API: {publication_path}"
+            )
 
-        yield from iter_publication_sources(collection.department, collection.collection_url, publication_path, publication)
+        yield from iter_publication_sources(
+            collection.department, collection.collection_url, publication_path, publication
+        )
 
 
 def process_source(
     dataset: Dataset,
     filename: str,
-    provenance: "ProvenanceT",
+    provenance: ProvenanceT,
     stats: dict[str, int],
-    trace: "TraceWriterT",
-    incremental_manifest: dict[str, Any] | None,
+    trace: TraceWriterT,
 ) -> None:
     source_reference = load_source_reference(dataset, filename, provenance)
     if source_reference.data is None:
         return
 
-    if incremental_manifest is not None and should_skip_source(incremental_manifest, provenance, source_reference):
-        stats["sources_skipped"] += 1
+    file_format = detect_file_format(source_reference.data, filename)
+    if file_format is None:
         write_source_trace(
             trace,
             provenance,
             filename,
             source_reference.resource_path,
             file_format=None,
-            status="skipped_unchanged",
+            status="unsupported",
         )
-        return
-
-    file_format = detect_file_format(source_reference.data, filename)
-    if file_format is None:
-        write_source_trace(trace, provenance, filename, source_reference.resource_path, file_format=None, status="unsupported")
-        if incremental_manifest is not None:
-            update_manifest_for_source(
-                incremental_manifest,
-                provenance,
-                source_reference,
-                status="unsupported",
-                file_format=None,
-            )
         return
 
     try:
@@ -546,48 +550,39 @@ def process_source(
 
     status = "empty" if not sheets else source_reference.fetch_status
     if not sheets:
-        write_source_trace(trace, provenance, filename, source_reference.resource_path, file_format=file_format, status=status)
-        if incremental_manifest is not None:
-            update_manifest_for_source(
-                incremental_manifest,
-                provenance,
-                source_reference,
-                status=status,
-                file_format=file_format,
-            )
+        write_source_trace(
+            trace,
+            provenance,
+            filename,
+            source_reference.resource_path,
+            file_format=file_format,
+            status=status,
+        )
         return
 
     stats["sources_processed"] += 1
     stats["sheets_processed"] += len(sheets)
     for sheet in sheets:
-        process_sheet(dataset, sheet, provenance, source_reference.resource_path, file_format, stats, trace)
-
-    if incremental_manifest is not None:
-        update_manifest_for_source(
-            incremental_manifest,
-            provenance,
-            source_reference,
-            status="processed",
-            file_format=file_format,
-            sheet_fingerprints=[fingerprint(sheet) for sheet in sheets],
+        process_sheet(
+            dataset, sheet, provenance, source_reference.resource_path, file_format, stats, trace
         )
 
 
 def process_sheet(
     dataset: Dataset,
-    sheet: "NormalisedSheetT",
-    provenance: "ProvenanceT",
+    sheet: NormalisedSheetT,
+    provenance: ProvenanceT,
     resource_path: Path | None,
     file_format: str,
     stats: dict[str, int],
-    trace: "TraceWriterT",
+    trace: TraceWriterT,
 ) -> None:
     sheet_fingerprint = fingerprint(sheet)
     header_row_index = detect_header_row(sheet)
     header_preview = header_signature(sheet)
     schema = load_schema(sheet_fingerprint)
 
-    trace_record = {
+    trace_record: dict[str, Any] = {
         "type": "sheet",
         "url": provenance.url,
         "resource_path": str(resource_path) if resource_path is not None else None,
@@ -606,16 +601,15 @@ def process_sheet(
         trace_record["status"] = "schema_missing"
         trace.write(trace_record)
         report_unknown_fingerprint(dataset, provenance, resource_path, sheet, sheet_fingerprint)
-        if should_fail_on_unknown(dataset):
-            raise ValueError(f"UNKNOWN FINGERPRINT: {sheet_fingerprint}")
-        return
+        raise ValueError(f"UNKNOWN FINGERPRINT: {sheet_fingerprint}")
 
+    schema_path = Path(__file__).with_name("schemas") / f"{sheet_fingerprint}.json"
     try:
         validate_schema(schema, sheet)
     except Exception as exc:
         raise ValueError(
             "Schema validation failed: "
-            f"fingerprint={sheet_fingerprint} schema={Path(__file__).with_name('schemas') / f'{sheet_fingerprint}.json'} "
+            f"fingerprint={sheet_fingerprint} schema={schema_path} "
             f"resource={resource_path} sheet={sheet.name!r} url={provenance.url} error={exc}"
         ) from exc
 
@@ -627,7 +621,7 @@ def process_sheet(
     except Exception as exc:
         raise ValueError(
             "Extraction failed: "
-            f"fingerprint={sheet_fingerprint} schema={Path(__file__).with_name('schemas') / f'{sheet_fingerprint}.json'} "
+            f"fingerprint={sheet_fingerprint} schema={schema_path} "
             f"resource={resource_path} sheet={sheet.name!r} url={provenance.url} error={exc}"
         ) from exc
 
@@ -638,8 +632,9 @@ def process_sheet(
         except Exception as exc:
             raise ValueError(
                 "Entity emission failed: "
-                f"fingerprint={sheet_fingerprint} schema={Path(__file__).with_name('schemas') / f'{sheet_fingerprint}.json'} "
-                f"resource={resource_path} sheet={sheet.name!r} row_index={record.get('row_index')} "
+                f"fingerprint={sheet_fingerprint} schema={schema_path} "
+                f"resource={resource_path} sheet={sheet.name!r} "
+                f"row_index={record.get('row_index')} "
                 f"record={record} url={provenance.url} error={exc}"
             ) from exc
     stats["entities_emitted"] += emitted_count
@@ -647,7 +642,7 @@ def process_sheet(
     trace_record.update(
         {
             "status": "validated",
-            "schema_path": str((Path(__file__).with_name("schemas") / f"{sheet_fingerprint}.json")),
+            "schema_path": str(schema_path),
             "sheet_type": schema.sheet_type,
             "activity_type": schema.activity_type,
             "row_counts": {
@@ -668,8 +663,8 @@ def process_sheet(
 
 
 def write_source_trace(
-    trace: "TraceWriterT",
-    provenance: "ProvenanceT",
+    trace: TraceWriterT,
+    provenance: ProvenanceT,
     filename: str,
     resource_path: Path | None,
     file_format: str | None,

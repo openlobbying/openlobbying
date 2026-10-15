@@ -7,31 +7,41 @@ from datetime import date
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from muckrake.utils.dates import parse_date, parse_day_range, parse_month_value, parse_partial_date, parse_year_hint_date
+from muckrake.utils.dates import (
+    parse_date,
+    parse_day_range,
+    parse_month_value,
+    parse_partial_date,
+    parse_year_hint_date,
+)
 
 if TYPE_CHECKING:
-    from .schema import DateRule as DateRuleT, Schema as SchemaT
+    from .schema import DateRule as DateRuleT
+    from .schema import Schema as SchemaT
 
-try:
+if TYPE_CHECKING:
     from .schema import DateRule, Schema
-except ImportError:
-    common_spec = importlib.util.spec_from_file_location(
-        f"{__name__}.common",
-        Path(__file__).with_name("common.py"),
-    )
-    if common_spec is None or common_spec.loader is None:
-        raise RuntimeError("Could not load gov-transparency common module")
-    common_module = importlib.util.module_from_spec(common_spec)
-    sys.modules[common_spec.name] = common_module
-    common_spec.loader.exec_module(common_module)
-    schema_module = common_module.load_sibling_module(__file__, __name__, "schema")
-    DateRule = schema_module.DateRule
-    Schema = schema_module.Schema
+else:
+    try:
+        from .schema import DateRule, Schema
+    except ImportError as err:
+        common_spec = importlib.util.spec_from_file_location(
+            f"{__name__}.common",
+            Path(__file__).with_name("common.py"),
+        )
+        if common_spec is None or common_spec.loader is None:
+            raise RuntimeError("Could not load gov-transparency common module") from err
+        common_module = importlib.util.module_from_spec(common_spec)
+        sys.modules[common_spec.name] = common_module
+        common_spec.loader.exec_module(common_module)
+        schema_module = common_module.load_sibling_module(__file__, __name__, "schema")
+        DateRule = schema_module.DateRule
+        Schema = schema_module.Schema
 
 
 def resolve_date(
     row: list[str],
-    schema: "SchemaT",
+    schema: SchemaT,
     period_start: date | None,
     period_end: date | None,
 ) -> dict[str, str]:
@@ -89,7 +99,7 @@ def resolve_date(
 
 def parse_value(
     raw: str,
-    rules: list["DateRuleT"],
+    rules: list[DateRuleT],
     period_start: date | None,
     period_end: date | None,
 ) -> dict[str, str] | None:
@@ -102,7 +112,7 @@ def parse_value(
 
 def parse_with_rule(
     raw: str,
-    rule: "DateRuleT",
+    rule: DateRuleT,
     period_start: date | None,
     period_end: date | None,
 ) -> dict[str, str] | None:
@@ -132,22 +142,22 @@ def parse_with_rule(
         return coerce_parsed_date(parsed, rule.precision)
 
     if rule.type == "day_range":
-        parsed = parse_day_range(raw, period_start, period_end)
-        if parsed is None:
+        day_range = parse_day_range(raw, period_start, period_end)
+        if day_range is None:
             return None
-        return {"kind": "range", "start": parsed[0], "end": parsed[1], "precision": "day"}
+        return {"kind": "range", "start": day_range[0], "end": day_range[1], "precision": "day"}
 
     if rule.type == "month_name":
-        parsed = parse_month_value(raw, period_start, period_end)
-        if parsed is None:
+        month_range = parse_month_value(raw, period_start, period_end)
+        if month_range is None:
             return None
-        return {"kind": "month", "value": parsed[0][:7], "precision": "month"}
+        return {"kind": "month", "value": month_range[0][:7], "precision": "month"}
 
     if rule.type == "month_name_from_period":
-        parsed = parse_month_value(raw, period_start, period_end)
-        if parsed is None:
+        month_range = parse_month_value(raw, period_start, period_end)
+        if month_range is None:
             return None
-        return {"kind": "month", "value": parsed[0][:7], "precision": "month"}
+        return {"kind": "month", "value": month_range[0][:7], "precision": "month"}
 
     raise ValueError(f"Unsupported date rule type: {rule.type}")
 

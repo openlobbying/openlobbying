@@ -1,0 +1,44 @@
+Trip:
+  label: "Trip"
+  plural: "Trips"
+  description: >
+    Official or sponsored travel by a government official, as published in
+    transparency releases and registers of interests.
+  extends:
+    - Event
+    - Value
+  matchable: false
+  featured:
+    - name
+    - date
+    - location
+    - involved
+  caption:
+    - name
+    - summary
+    - date
+  properties:
+    purpose:
+      label: "Purpose"
+      type: text
+    employee:
+      label: "Traveller"
+      type: entity
+      range: Person
+      reverse:
+        name: tripsAsTraveller
+        label: "Trips"
+    employer:
+      label: "Employer"
+      type: entity
+      range: LegalEntity
+      reverse:
+        name: tripsAsEmployer
+        label: "Trips (as employer)"
+    payer:
+      label: "Payer"
+      type: entity
+      range: LegalEntity
+      reverse:
+        name: tripsPaid
+        label: "Trips paid for"

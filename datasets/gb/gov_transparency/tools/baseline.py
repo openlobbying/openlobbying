@@ -13,7 +13,7 @@ from org_id import make_hashed_id
 if TYPE_CHECKING:
     from ..types import Provenance as ProvenanceT
 
-try:
+if TYPE_CHECKING:
     from ..common import load_sibling_module, parse_period
     from ..entities import emit_entities
     from ..extract import extract
@@ -21,28 +21,49 @@ try:
     from ..normalise import normalise
     from ..schema import SCHEMAS_DIR, load_schema, schema_from_dict, validate_schema
     from ..types import Provenance
-except ImportError:
-    common_spec = importlib.util.spec_from_file_location(
-        f"{__name__}.common",
-        Path(__file__).resolve().parents[1] / "common.py",
-    )
-    if common_spec is None or common_spec.loader is None:
-        raise RuntimeError("Could not load gov-transparency common module")
-    common_module = importlib.util.module_from_spec(common_spec)
-    sys.modules[common_spec.name] = common_module
-    common_spec.loader.exec_module(common_module)
-    load_sibling_module = common_module.load_sibling_module
-    parse_period = common_module.parse_period
-    normalise = load_sibling_module(Path(__file__).resolve().parents[1] / "normalise.py", __name__, "normalise").normalise
-    fingerprint = load_sibling_module(Path(__file__).resolve().parents[1] / "fingerprint.py", __name__, "fingerprint").fingerprint
-    extract = load_sibling_module(Path(__file__).resolve().parents[1] / "extract.py", __name__, "extract").extract
-    emit_entities = load_sibling_module(Path(__file__).resolve().parents[1] / "entities.py", __name__, "entities").emit_entities
-    schema_module = load_sibling_module(Path(__file__).resolve().parents[1] / "schema.py", __name__, "schema")
-    SCHEMAS_DIR = schema_module.SCHEMAS_DIR
-    load_schema = schema_module.load_schema
-    schema_from_dict = schema_module.schema_from_dict
-    validate_schema = schema_module.validate_schema
-    Provenance = load_sibling_module(Path(__file__).resolve().parents[1] / "types.py", __name__, "types").Provenance
+else:
+    try:
+        from ..common import load_sibling_module, parse_period
+        from ..entities import emit_entities
+        from ..extract import extract
+        from ..fingerprint import fingerprint
+        from ..normalise import normalise
+        from ..schema import SCHEMAS_DIR, load_schema, schema_from_dict, validate_schema
+        from ..types import Provenance
+    except ImportError as err:
+        common_spec = importlib.util.spec_from_file_location(
+            f"{__name__}.common",
+            Path(__file__).resolve().parents[1] / "common.py",
+        )
+        if common_spec is None or common_spec.loader is None:
+            raise RuntimeError("Could not load gov-transparency common module") from err
+        common_module = importlib.util.module_from_spec(common_spec)
+        sys.modules[common_spec.name] = common_module
+        common_spec.loader.exec_module(common_module)
+        load_sibling_module = common_module.load_sibling_module
+        parse_period = common_module.parse_period
+        normalise = load_sibling_module(
+            Path(__file__).resolve().parents[1] / "normalise.py", __name__, "normalise"
+        ).normalise
+        fingerprint = load_sibling_module(
+            Path(__file__).resolve().parents[1] / "fingerprint.py", __name__, "fingerprint"
+        ).fingerprint
+        extract = load_sibling_module(
+            Path(__file__).resolve().parents[1] / "extract.py", __name__, "extract"
+        ).extract
+        emit_entities = load_sibling_module(
+            Path(__file__).resolve().parents[1] / "entities.py", __name__, "entities"
+        ).emit_entities
+        schema_module = load_sibling_module(
+            Path(__file__).resolve().parents[1] / "schema.py", __name__, "schema"
+        )
+        SCHEMAS_DIR = schema_module.SCHEMAS_DIR
+        load_schema = schema_module.load_schema
+        schema_from_dict = schema_module.schema_from_dict
+        validate_schema = schema_module.validate_schema
+        Provenance = load_sibling_module(
+            Path(__file__).resolve().parents[1] / "types.py", __name__, "types"
+        ).Provenance
 
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -68,11 +89,13 @@ class CountingDataset:
         self.emitted = []
 
     def make(self, schema: str):
-        from followthemoney.statement.entity import StatementEntity
         from followthemoney import Dataset as FTMDataset
+        from followthemoney.statement.entity import StatementEntity
 
         if not hasattr(self, "ftm"):
-            self.ftm = FTMDataset.make({"name": "gb_gov_transparency_baseline", "prefix": self.prefix})
+            self.ftm = FTMDataset.make(
+                {"name": "gb_gov_transparency_baseline", "prefix": self.prefix}
+            )
         return StatementEntity(self.ftm, {"schema": schema})
 
     def make_id(self, *parts, **kwargs):
@@ -95,7 +118,7 @@ def make_case_url(case: BaselineCase) -> str:
     return f"https://example.test/{case.name}"
 
 
-def make_provenance(case: BaselineCase) -> "ProvenanceT":
+def make_provenance(case: BaselineCase) -> ProvenanceT:
     period_start, period_end = parse_period(case.publication_title)
     if period_start is None or period_end is None:
         raise ValueError(f"Could not parse period for baseline case: {case.name}")
@@ -127,7 +150,7 @@ def summarize_case(case: BaselineCase) -> dict:
     provenance = make_provenance(case)
     sheets = normalise(resource.read_bytes(), resource.name)
     dataset = CountingDataset()
-    case_summary = {
+    case_summary: dict[str, Any] = {
         "name": case.name,
         "resource_path": case.resource_path,
         "publication_title": case.publication_title,
@@ -178,8 +201,8 @@ def summarize_case(case: BaselineCase) -> dict:
 
 def snapshot_registry() -> dict:
     files = sorted(SCHEMAS_DIR.glob("*.json"))
-    by_sheet_type = Counter()
-    by_activity_type = Counter()
+    by_sheet_type: Counter[str] = Counter()
+    by_activity_type: Counter[str] = Counter()
     fingerprints = []
     for path in files:
         with path.open("r", encoding="utf-8") as fh:

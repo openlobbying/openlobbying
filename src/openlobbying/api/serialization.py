@@ -1,5 +1,4 @@
 from followthemoney import model
-from muckrake.serialize import get_all_datasets_metadata, serialize_entity
 
 from openlobbying import ACTOR_SCHEMATA
 

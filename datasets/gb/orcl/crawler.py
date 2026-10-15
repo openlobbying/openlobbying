@@ -1,25 +1,22 @@
-import re
 import json
+import re
+from typing import Any
 from urllib.parse import parse_qs, urlparse
 
 import requests
 from bs4 import BeautifulSoup
-
 from muckrake.dataset import Dataset
 from muckrake.utils import normalize_gb_coh
 
 BASE_URL = "https://orcl.my.site.com"
 SEARCH_URL = "https://orcl.my.site.com/CLR_Search"
-AJAX_SUBMIT_RE = re.compile(
-    r"A4J\.AJAX\.Submit\('([^']+)'.*?'parameters':\{'([^']+)':'([^']+)'\}"
-)
+AJAX_SUBMIT_RE = re.compile(r"A4J\.AJAX\.Submit\('([^']+)'.*?'parameters':\{'([^']+)':'([^']+)'\}")
 AJAX_HEADERS = {
     "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
     "X-Requested-With": "XMLHttpRequest",
     "Origin": BASE_URL,
     "Accept": "*/*",
 }
-MAX_CLIENT_PAGES = 10
 
 MONTHS = {
     "january": 1,
@@ -89,17 +86,20 @@ def crawl(context: Dataset):
     session = requests.Session()
     session.headers.update(
         {
-            "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "User-Agent": (
+                "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
+                "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+            ),
         }
     )
 
     # Initial Page
-    context.log.info(f"Fetching Page 1...")
+    context.log.info("Fetching Page 1...")
     res = session.get(SEARCH_URL, timeout=60)
     res.raise_for_status()
     soup = BeautifulSoup(res.text, "html.parser")
 
-    seen_profiles = set()
+    seen_profiles: set[str] = set()
 
     # Process Page 1
     process_page(context, session, soup, page_num=1, seen_profiles=seen_profiles)
@@ -113,13 +113,9 @@ def crawl(context: Dataset):
             break
 
         onclick = next_page_link.get("onclick")
-        if not isinstance(onclick, str):
-            context.log.warning("Missing or invalid Next Page click handler. Stopping.")
-            break
-        parsed = parse_ajax_submit(onclick)
+        parsed = parse_ajax_submit(onclick) if isinstance(onclick, str) else None
         if parsed is None:
-            context.log.warning("Could not parse Next Page click handler. Stopping.")
-            break
+            raise ValueError(f"Unrecognised Next Page click handler: {onclick!r}")
 
         container_id, link_id, _ = parsed
 
@@ -137,7 +133,9 @@ def crawl(context: Dataset):
 
         res = post_ajax(session, SEARCH_URL, payload)
         if res.status_code != 200:
-            context.log.error(f"Page {page_num} fetch failed with {res.status_code}")
+            context.warn_incomplete(
+                "register page fetch failed", page=page_num, status=res.status_code
+            )
             break
 
         soup = BeautifulSoup(res.text, "html.parser")
@@ -180,7 +178,7 @@ def process_page(
 
 
 def extract_list_items(soup):
-    results = []
+    results: list[dict[str, str]] = []
     table = soup.find("table", class_="clrDataTable")
     if not table:
         return results
@@ -229,7 +227,7 @@ def process_lobbyist(context: Dataset, session: requests.Session, item):
                     url,
                     headers=dict(session.headers),
                 )
-                with open(path, "r", encoding="utf-8") as fh:
+                with open(path, encoding="utf-8") as fh:
                     details_html = fh.read()
             except Exception as exc:
                 context.log.warning(
@@ -239,9 +237,7 @@ def process_lobbyist(context: Dataset, session: requests.Session, item):
         if details_html is None:
             res = session.get(url, timeout=60)
             if res.status_code != 200:
-                context.log.warning(
-                    f"Failed to fetch profile for {name}: {res.status_code}"
-                )
+                context.log.warning(f"Failed to fetch profile for {name}: {res.status_code}")
                 return
             details_html = res.text
 
@@ -270,9 +266,7 @@ def process_lobbyist(context: Dataset, session: requests.Session, item):
         snapshots = None
         snapshot_path = None
         if profile_id:
-            snapshot_path = (
-                context.resources_path / f"profile_{profile_id}_snapshots.json"
-            )
+            snapshot_path = context.resources_path / f"profile_{profile_id}_snapshots.json"
             if snapshot_path.exists():
                 try:
                     snapshots = json.loads(snapshot_path.read_text(encoding="utf-8"))
@@ -292,9 +286,7 @@ def process_lobbyist(context: Dataset, session: requests.Session, item):
                         encoding="utf-8",
                     )
                 except Exception as exc:
-                    context.log.warning(
-                        f"{name}: failed to write snapshot cache ({exc})"
-                    )
+                    context.log.warning(f"{name}: failed to write snapshot cache ({exc})")
 
         context.log.info(f"{name}: found {len(snapshots)} quarter snapshots")
         for snapshot in snapshots:
@@ -332,7 +324,7 @@ def process_lobbyist(context: Dataset, session: requests.Session, item):
 
 
 def extract_details(soup):
-    details = {
+    details: dict[str, Any] = {
         "address": None,
         "company_number": None,
         "clients": [],
@@ -360,22 +352,16 @@ def extract_details(soup):
             details["company_number"] = next_sibling.strip()
         else:
             # Fallback
-            text = (
-                company_label.get_text(strip=True).replace("Company Number", "").strip()
-            )
+            text = company_label.get_text(strip=True).replace("Company Number", "").strip()
             if text:
                 details["company_number"] = text
 
     # 3. Current quarter metadata
-    period_label, start_date, end_date, clients_form = extract_current_quarter_metadata(
-        soup
-    )
+    period_label, start_date, end_date, clients_form = extract_current_quarter_metadata(soup)
     if period_label:
         details["start_date"] = start_date
         details["end_date"] = end_date
-        details["clients"] = (
-            extract_clients_from_container(clients_form) if clients_form else []
-        )
+        details["clients"] = extract_clients_from_container(clients_form) if clients_form else []
 
     return details
 
@@ -440,26 +426,33 @@ def fetch_all_clients_from_form(
     seen = set()
     clients = []
     pages = 0
+    pages_without_new = 0
 
-    while clients_form is not None and pages < MAX_CLIENT_PAGES:
+    while True:
         pages += 1
+        new_clients = 0
         for client_name in extract_clients_from_container(clients_form):
             if client_name in seen:
                 continue
             seen.add(client_name)
             clients.append(client_name)
+            new_clients += 1
 
         next_link = clients_form.find("a", text=re.compile(r"Next clients", re.I))
         if not next_link:
             break
+        # The first "Next clients" postback on a profile page returns page 1 again,
+        # so one repeated page is normal. Two in a row means paging is stuck, which
+        # would otherwise loop forever.
+        pages_without_new = 0 if new_clients else pages_without_new + 1
+        if pages_without_new >= 2:
+            context.warn_incomplete("client paging stalled", profile=profile_url, pages=pages)
+            break
 
         onclick = next_link.get("onclick")
-        if not isinstance(onclick, str):
-            break
-
-        parsed = parse_ajax_submit(onclick)
+        parsed = parse_ajax_submit(onclick) if isinstance(onclick, str) else None
         if parsed is None:
-            break
+            raise ValueError(f"{profile_url}: unrecognised Next clients click handler: {onclick!r}")
 
         form_id, trigger_name, trigger_value = parsed
 
@@ -471,16 +464,20 @@ def fetch_all_clients_from_form(
 
         response = post_ajax(session, profile_url, payload)
         if response.status_code != 200:
+            context.warn_incomplete(
+                "client page fetch failed",
+                profile=profile_url,
+                page=pages + 1,
+                status=response.status_code,
+            )
             break
 
         page_soup = BeautifulSoup(response.text, "html.parser")
         clients_form = page_soup.find("form", id=form_id)
+        if clients_form is None:
+            raise ValueError(f"{profile_url}: client page {pages + 1} has no form {form_id!r}")
 
-    if pages >= MAX_CLIENT_PAGES:
-        context.log.warning(
-            f"{profile_url}: reached max client page limit ({MAX_CLIENT_PAGES})"
-        )
-    elif pages > 1:
+    if pages > 1:
         context.log.info(f"{profile_url}: paged clients across {pages} pages")
     return clients
 
@@ -492,8 +489,8 @@ def collect_quarter_snapshots(
     seen_periods = set()
 
     def append_snapshot(snapshot_soup):
-        period_label, start_date, end_date, clients_form = (
-            extract_current_quarter_metadata(snapshot_soup)
+        period_label, start_date, end_date, clients_form = extract_current_quarter_metadata(
+            snapshot_soup
         )
         if not period_label or period_label in seen_periods:
             return
@@ -521,17 +518,14 @@ def collect_quarter_snapshots(
     previous_links = soup.find_all(
         "a", onclick=re.compile(r"A4J\.AJAX\.Submit\('j_id0:j_id1:previousReturns:")
     )
-    context.log.info(
-        f"{profile_url}: fetching {len(previous_links)} previous quarter links"
-    )
+    context.log.info(f"{profile_url}: fetching {len(previous_links)} previous quarter links")
     for link in previous_links:
         onclick = link.get("onclick")
-        if not isinstance(onclick, str):
-            continue
-
-        parsed = parse_ajax_submit(onclick)
+        parsed = parse_ajax_submit(onclick) if isinstance(onclick, str) else None
         if parsed is None:
-            continue
+            raise ValueError(
+                f"{profile_url}: unrecognised previous-quarter click handler: {onclick!r}"
+            )
 
         form_id, trigger_name, trigger_value = parsed
 
@@ -544,8 +538,11 @@ def collect_quarter_snapshots(
         # time.sleep(0.1)
         response = post_ajax(session, profile_url, payload)
         if response.status_code != 200:
-            context.log.warning(
-                f"Failed to fetch previous client list for {profile_url} ({response.status_code})"
+            context.warn_incomplete(
+                "previous quarter fetch failed",
+                profile=profile_url,
+                quarter=link.get_text(" ", strip=True),
+                status=response.status_code,
             )
             continue
 

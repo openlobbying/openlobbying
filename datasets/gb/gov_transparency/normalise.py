@@ -1,16 +1,16 @@
 import csv
+import zipfile
 from dataclasses import dataclass
 from io import BytesIO, StringIO
 from pathlib import Path
 from typing import Any, Literal, cast
-import zipfile
 
+import xlrd
 from bs4 import BeautifulSoup
 from odf.opendocument import load as load_odf
 from odf.table import CoveredTableCell, Table, TableCell, TableRow
 from odf.teletype import extractText
 from openpyxl import load_workbook
-import xlrd
 
 NormalisedFormat = Literal["csv", "html", "xls", "xlsx", "xlsm", "ods"]
 
@@ -156,6 +156,14 @@ def is_probably_csv_bytes(data: bytes, chunk_size: int = 4096) -> bool:
     if dialect is not None:
         delimiter = getattr(dialect, "delimiter", None)
         if delimiter is not None and any(delimiter in line for line in lines[:3]):
+            return True
+        return False
+
+    # The Sniffer's heuristics change between Python patch releases (3.13.16 gives
+    # up on CSVs that 3.13.11 sniffs); fall back to a consistent column count.
+    for delimiter in ",;\t|":
+        widths = {len(row) for row in csv.reader(lines[:10], delimiter=delimiter)}
+        if len(widths) == 1 and widths.pop() > 1:
             return True
     return False
 

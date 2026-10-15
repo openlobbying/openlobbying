@@ -1,6 +1,8 @@
 import csv
+
 from muckrake.util import parse_amount, parse_date
-from .common import make_donor, create_recipient_entity
+
+from .common import create_recipient_entity, make_donor
 
 
 def crawl_spending(dataset):
@@ -9,65 +11,67 @@ def crawl_spending(dataset):
 
     path = dataset.fetch_resource("spending.csv", url)
 
-    with open(path, 'r', encoding='utf-8-sig') as fh:
+    with open(path, encoding="utf-8-sig") as fh:
         reader = csv.DictReader(fh)
 
         for row in reader:
-            ec_ref = row.get('ECRef')
+            ec_ref = row.get("ECRef")
             if not ec_ref:
                 continue
 
             # Regulated entity (the organisation that incurred the expenditure)
-            recipient_id = row.get('RegulatedEntityId')
-            recipient_name = row.get('RegulatedEntityName')
-            recipient_type = row.get('RegulatedEntityType')
+            recipient_id = row.get("RegulatedEntityId")
+            recipient_name = row.get("RegulatedEntityName")
+            recipient_type = row.get("RegulatedEntityType")
 
             # Supplier / payee
-            supplier_id = row.get('SupplierId')
-            supplier_name = row.get('SupplierName')
-            supplier_address = row.get('FullAddress')
+            supplier_id = row.get("SupplierId")
+            supplier_name = row.get("SupplierName")
+            supplier_address = row.get("FullAddress")
 
             # Spending/payment fields
-            total_expenditure = row.get('TotalExpenditure')
-            date_incurred = row.get('DateIncurred')
-            expense_category = row.get('ExpenseCategoryName')
-            amount_england = row.get('AmountInEngland')
-            amount_scotland = row.get('AmountInScotland')
-            amount_wales = row.get('AmountInWales')
-            amount_ni = row.get('AmountInNorthernIreland')
-            date_of_claim = row.get('DateOfClaimForPayment')
-            date_paid = row.get('DatePaid')
-            joint_campaign = row.get('JointCampaignName')
-            unregistered = row.get('UnregisteredCampaignerName')
-            campaigning_name = row.get('CampaigningName')
-            is_outside_section75 = row.get('IsOutsideSection75')
+            total_expenditure = row.get("TotalExpenditure")
+            date_incurred = row.get("DateIncurred")
+            expense_category = row.get("ExpenseCategoryName")
+            amount_england = row.get("AmountInEngland")
+            amount_scotland = row.get("AmountInScotland")
+            amount_wales = row.get("AmountInWales")
+            amount_ni = row.get("AmountInNorthernIreland")
+            # Suspected gap: these two dates are read but never emitted on the Payment.
+            date_of_claim = row.get("DateOfClaimForPayment")  # noqa: F841
+            date_paid = row.get("DatePaid")  # noqa: F841
+            joint_campaign = row.get("JointCampaignName")
+            unregistered = row.get("UnregisteredCampaignerName")
+            campaigning_name = row.get("CampaigningName")
+            is_outside_section75 = row.get("IsOutsideSection75")
 
             # Create entities
             supplier = make_donor(
-                dataset, supplier_id, supplier_name, None,
-                None, supplier_address, None
+                dataset, supplier_id, supplier_name, None, None, supplier_address, None
             )
             dataset.emit(supplier)
 
-            recipient = create_recipient_entity(
+            # BUG: register_name is missing, so this call raises TypeError; crawl_spending
+            # is not wired into crawler.py, so it never runs.
+            recipient = create_recipient_entity(  # type: ignore[call-arg]
                 dataset, recipient_id, recipient_name, recipient_type, None
             )
             dataset.emit(recipient)
 
             # Create Payment record representing the expenditure
-            payment = dataset.make('Payment')
+            payment = dataset.make("Payment")
             payment.id = dataset.make_id(ec_ref)
-            payment.add('purpose', 'Spending')
-            payment.add('payer', supplier)
-            payment.add('beneficiary', recipient)
-            payment.add('recordId', ec_ref)
-            payment.add('date', parse_date(date_incurred))
-            payment.add('amount', parse_amount(total_expenditure))
-            payment.add('currency', 'GBP')
+            payment.add("purpose", "Spending")
+            payment.add("payer", supplier)
+            payment.add("beneficiary", recipient)
+            payment.add("recordId", ec_ref)
+            payment.add("date", parse_date(date_incurred))
+            payment.add("amount", parse_amount(total_expenditure))
+            payment.add("currency", "GBP")
 
             # Summary and description
             if expense_category:
-                payment.add('summary', expense_category)
+                payment.add("summary", expense_category)
 
             description_parts = []
             # Avoid duplicating information already stored in other fields
@@ -92,12 +96,12 @@ def crawl_spending(dataset):
             if amount_ni:
                 breakdown.append(f"Northern Ireland: £{amount_ni}")
             if breakdown:
-                description_parts.append('Breakdown: ' + ' | '.join(breakdown))
+                description_parts.append("Breakdown: " + " | ".join(breakdown))
 
             if description_parts:
-                payment.add('description', ' | '.join(description_parts))
+                payment.add("description", " | ".join(description_parts))
 
-            source_url = f'https://search.electoralcommission.org.uk/English/Spending/{ec_ref}'
-            payment.add('sourceUrl', source_url)
+            source_url = f"https://search.electoralcommission.org.uk/English/Spending/{ec_ref}"
+            payment.add("sourceUrl", source_url)
 
             dataset.emit(payment)

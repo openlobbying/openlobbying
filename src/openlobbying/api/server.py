@@ -3,22 +3,11 @@ from __future__ import annotations
 import logging
 import os
 import time
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from fastapi import FastAPI, Header, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from followthemoney import model
-from functools import lru_cache
-from nomenklatura.resolver import Identifier
-from pydantic import BaseModel
-from sqlalchemy import case, distinct, func, select, text
-
-from muckrake.logging import configure_logging
-from muckrake.search import (
-    get_actor_schema_counts,
-    list_actor_sitemap_entries,
-    search_entities as run_entity_search,
-)
 from muckrake.dedupe import (
     DedupeLockError,
     get_lock_engine,
@@ -29,16 +18,24 @@ from muckrake.dedupe import (
     skip_dedupe_cluster,
 )
 from muckrake.dedupe.cluster import LockedPair
+from muckrake.entity_query import get_view, list_all_dataset_names, serialize_view_entity
+from muckrake.logging import configure_logging
+from muckrake.search import (
+    get_actor_schema_counts,
+    list_actor_sitemap_entries,
+)
+from muckrake.search import (
+    search_entities as run_entity_search,
+)
+from muckrake.serialize import get_all_datasets_metadata
+from muckrake.view import get_published_engine
+from nomenklatura.resolver import Identifier
+from pydantic import BaseModel
+from sqlalchemy import case, distinct, func, select, text
 
 from openlobbying import ACTOR_SCHEMATA
 from openlobbying.api.graph_logic import get_entity_graph_data
-from openlobbying.api.serialization import get_all_datasets_metadata, is_actor
-from openlobbying.api.view import (
-    get_published_engine,
-    get_view,
-    list_all_dataset_names,
-    serialize_view_entity,
-)
+from openlobbying.api.serialization import is_actor
 
 log = logging.getLogger(__name__)
 
@@ -118,9 +115,7 @@ PROFILE_ACTIVITY_DATE_PROPS = (
 )
 
 
-def _normalize_profile_activity_pagination(
-    limit: int, offset: int
-) -> tuple[int, int]:
+def _normalize_profile_activity_pagination(limit: int, offset: int) -> tuple[int, int]:
     return max(1, min(limit, PROFILE_ACTIVITY_MAX_LIMIT)), max(0, offset)
 
 
@@ -140,7 +135,7 @@ def _get_profile_activity_sort_value(ent) -> tuple[str, str]:
     return "", ent.id
 
 
-def _collect_profile_adjacent(ent) -> List[tuple[str, Any, tuple[int, str]]]:
+def _collect_profile_adjacent(ent) -> list[tuple[str, Any, tuple[int, str]]]:
     view = current_view()
     unique_adjacent: dict[str, tuple[str, Any, tuple[int, str]]] = {}
     for prop, adj_ent in view.get_adjacent(ent):
@@ -151,15 +146,13 @@ def _collect_profile_adjacent(ent) -> List[tuple[str, Any, tuple[int, str]]]:
     return list(unique_adjacent.values())
 
 
-def _get_profile_lookup_ids(entity_id: str) -> List[str]:
+def _get_profile_lookup_ids(entity_id: str) -> list[str]:
     view = current_view()
     ids = [identifier.id for identifier in view.store.linker.connected(Identifier.get(entity_id))]
     return ids or [entity_id]
 
 
-def _get_profile_statement_query_parts(
-    entity_id: str, schema_names: Optional[set[str]] = None
-):
+def _get_profile_statement_query_parts(entity_id: str, schema_names: set[str] | None = None):
     view = current_view()
     table = view.store.table
     filters = [
@@ -199,11 +192,9 @@ def _get_profile_adjacent_rank(adj_ent, entity_id: str) -> tuple[int, str]:
     return 100, adj_ent.schema.name
 
 
-def _load_profile_relationship_items(entity_id: str) -> List[tuple[str, Any, tuple[int, str]]]:
+def _load_profile_relationship_items(entity_id: str) -> list[tuple[str, Any, tuple[int, str]]]:
     view = current_view()
-    table, filters = _get_profile_statement_query_parts(
-        entity_id, PROFILE_RELATIONSHIP_SCHEMATA
-    )
+    table, filters = _get_profile_statement_query_parts(entity_id, PROFILE_RELATIONSHIP_SCHEMATA)
     query = select(table.c.canonical_id).where(*filters).group_by(table.c.canonical_id)
 
     with view.store.engine.connect() as conn:
@@ -213,7 +204,7 @@ def _load_profile_relationship_items(entity_id: str) -> List[tuple[str, Any, tup
             if canonical_id is not None
         ]
 
-    items: List[tuple[str, Any, tuple[int, str]]] = []
+    items: list[tuple[str, Any, tuple[int, str]]] = []
     for relationship_id in relationship_ids:
         adj_ent = view.get_entity(relationship_id)
         if adj_ent is None:
@@ -239,9 +230,9 @@ def _has_profile_direct_adjacent(ent) -> bool:
 
 
 def _serialize_profile_relationships(
-    items: List[tuple[str, Any, tuple[int, str]]],
-) -> Dict[str, Dict[str, Any]]:
-    adjacent: Dict[str, Dict[str, Any]] = {}
+    items: list[tuple[str, Any, tuple[int, str]]],
+) -> dict[str, dict[str, Any]]:
+    adjacent: dict[str, dict[str, Any]] = {}
     for prop_name, adj_ent, _ in items:
         if not _is_profile_relationship_entity(adj_ent):
             continue
@@ -254,10 +245,10 @@ def _serialize_profile_relationships(
 
 
 def _paginate_profile_activities(
-    items: List[tuple[str, Any, tuple[int, str]]],
+    items: list[tuple[str, Any, tuple[int, str]]],
     limit: int,
     offset: int,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     activities = [adj_ent for _, adj_ent, _ in items if _is_profile_activity_entity(adj_ent)]
     activities.sort(key=_get_profile_activity_sort_value, reverse=True)
 
@@ -273,7 +264,8 @@ def _paginate_profile_activities(
     }
 
 
-def _paginate_profile_activities_sql(entity_id: str, limit: int, offset: int) -> Dict[str, Any]:
+def _paginate_profile_activities_sql(entity_id: str, limit: int, offset: int) -> dict[str, Any]:
+    view = current_view()
     table, filters = _get_profile_statement_query_parts(entity_id, PROFILE_ACTIVITY_SCHEMATA)
     sort_expr = _get_profile_activity_sort_expression(table)
 
@@ -321,7 +313,7 @@ def current_view():
 
 
 STATS_CACHE_TTL_SECONDS = 600
-_stats_cache: Dict[str, Any] = {"expires_at": 0.0, "value": None}
+_stats_cache: dict[str, Any] = {"expires_at": 0.0, "value": None}
 
 
 TOP_ACTOR_SQL = text(
@@ -347,8 +339,10 @@ TOP_ACTOR_SQL = text(
             s.canonical_id AS actor_id,
             MAX(CASE WHEN s.prop = 'name' THEN s.value END) AS name,
             MAX(s.schema) AS schema,
-            MAX(CASE WHEN s.prop = 'topics' AND s.value = 'role.lobby' THEN 1 ELSE 0 END) AS is_lobby,
-            MAX(CASE WHEN s.prop = 'topics' AND s.value = 'pol.party' THEN 1 ELSE 0 END) AS is_party
+            MAX(CASE WHEN s.prop = 'topics' AND s.value = 'role.lobby' THEN 1 ELSE 0 END)
+                AS is_lobby,
+            MAX(CASE WHEN s.prop = 'topics' AND s.value = 'pol.party' THEN 1 ELSE 0 END)
+                AS is_party
         FROM statement s
         WHERE s.schema IN ('Organization', 'Company', 'LegalEntity', 'Person', 'PublicBody')
         GROUP BY s.canonical_id
@@ -368,7 +362,7 @@ TOP_ACTOR_SQL = text(
 )
 
 
-def _actor_schema_filter(schema: Optional[List[str]]) -> List[str]:
+def _actor_schema_filter(schema: list[str] | None) -> list[str]:
     if not schema:
         return sorted(ACTOR_SCHEMATA)
     filtered = [value for value in schema if value in ACTOR_SCHEMATA]
@@ -377,7 +371,7 @@ def _actor_schema_filter(schema: Optional[List[str]]) -> List[str]:
     return sorted(set(filtered))
 
 
-SCHEMA_CHILDREN: Dict[str, List[str]] = {
+SCHEMA_CHILDREN: dict[str, list[str]] = {
     "LegalEntity": ["Organization", "Person"],
     "Organization": ["Company", "PublicBody"],
 }
@@ -391,8 +385,8 @@ def _expand_schema(schema_name: str, output: set[str]) -> None:
 
 
 def _expand_actor_schema_filter(
-    schema: Optional[List[str]],
-) -> tuple[List[str], List[str]]:
+    schema: list[str] | None,
+) -> tuple[list[str], list[str]]:
     requested = _actor_schema_filter(schema)
     expanded: set[str] = set()
     for schema_name in requested:
@@ -401,14 +395,14 @@ def _expand_actor_schema_filter(
     return requested, applied
 
 
-def _get_top_actor_rankings(limit: int = 10) -> Dict[str, List[Dict[str, Any]]]:
+def _get_top_actor_rankings(limit: int = 10) -> dict[str, list[dict[str, Any]]]:
     try:
         engine = get_published_engine()
         with engine.connect() as conn:
             rows = conn.execute(TOP_ACTOR_SQL).fetchall()
 
-        lobbying: List[Dict[str, Any]] = []
-        organizations: List[Dict[str, Any]] = []
+        lobbying: list[dict[str, Any]] = []
+        organizations: list[dict[str, Any]] = []
 
         for row in rows:
             item = {
@@ -445,13 +439,13 @@ def _get_top_actor_rankings(limit: int = 10) -> Dict[str, List[Dict[str, Any]]]:
 
 
 def _search_response(
-    results: List[Dict[str, Any]],
+    results: list[dict[str, Any]],
     total: int,
     offset: int,
     limit: int,
-    requested_schema: List[str],
-    applied_schema: List[str],
-) -> Dict[str, Any]:
+    requested_schema: list[str],
+    applied_schema: list[str],
+) -> dict[str, Any]:
     return {
         "results": results,
         "total": total,
@@ -464,7 +458,7 @@ def _search_response(
     }
 
 
-def _redirect_payload(ent, route: str) -> Dict[str, Any]:
+def _redirect_payload(ent, route: str) -> dict[str, Any]:
     return {
         "redirect": True,
         "correct_route": route,
@@ -488,7 +482,7 @@ class DedupeJudgementBody(BaseModel):
     right_id: str
     judgement: str
     user_id: str
-    user_name: Optional[str] = None
+    user_name: str | None = None
 
 
 class DedupeLockedPairBody(BaseModel):
@@ -497,30 +491,27 @@ class DedupeLockedPairBody(BaseModel):
 
 
 class DedupeClusterJudgementBody(BaseModel):
-    entity_ids: List[str]
-    selected_ids: List[str]
-    locked_pairs: List[DedupeLockedPairBody]
+    entity_ids: list[str]
+    selected_ids: list[str]
+    locked_pairs: list[DedupeLockedPairBody]
     intent: str
     user_id: str
-    user_name: Optional[str] = None
+    user_name: str | None = None
 
 
 def _locked_pairs_from_body(
-    pairs: List[DedupeLockedPairBody],
-) -> List[LockedPair]:
-    return [
-        {"left_id": pair.left_id, "right_id": pair.right_id, "score": None}
-        for pair in pairs
-    ]
+    pairs: list[DedupeLockedPairBody],
+) -> list[LockedPair]:
+    return [{"left_id": pair.left_id, "right_id": pair.right_id, "score": None} for pair in pairs]
 
 
-def require_admin_secret(x_admin_secret: Optional[str] = Header(default=None)) -> None:
+def require_admin_secret(x_admin_secret: str | None = Header(default=None)) -> None:
     if x_admin_secret != get_admin_api_secret():
         raise HTTPException(status_code=403, detail="Forbidden")
 
 
 @app.get("/")
-def root() -> Dict[str, object]:
+def root() -> dict[str, object]:
     return {
         "name": "OpenLobbying API",
         "version": "0.1.0",
@@ -529,7 +520,7 @@ def root() -> Dict[str, object]:
 
 
 @app.get("/datasets")
-def list_datasets() -> List[Dict[str, Any]]:
+def list_datasets() -> list[dict[str, Any]]:
     """List all available datasets with metadata."""
     all_meta = get_all_datasets_metadata()
     output = []
@@ -541,8 +532,8 @@ def list_datasets() -> List[Dict[str, Any]]:
 @app.get("/admin/dedupe/next")
 def get_admin_dedupe_candidate(
     user_id: str,
-    user_name: Optional[str] = None,
-    x_admin_secret: Optional[str] = Header(default=None),
+    user_name: str | None = None,
+    x_admin_secret: str | None = Header(default=None),
 ):
     require_admin_secret(x_admin_secret)
     return {"candidate": get_next_dedupe_candidate(user_id, user_name=user_name)}
@@ -551,7 +542,7 @@ def get_admin_dedupe_candidate(
 @app.post("/admin/dedupe/judge")
 def judge_admin_dedupe_candidate(
     body: DedupeJudgementBody,
-    x_admin_secret: Optional[str] = Header(default=None),
+    x_admin_secret: str | None = Header(default=None),
 ):
     require_admin_secret(x_admin_secret)
     try:
@@ -561,6 +552,7 @@ def judge_admin_dedupe_candidate(
             body.judgement,
             body.user_id,
             user_name=body.user_name,
+            user_prefix="openlobbying",
         )
     except DedupeLockError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
@@ -573,8 +565,8 @@ def judge_admin_dedupe_candidate(
 @app.get("/admin/dedupe-clusters/next")
 def get_admin_dedupe_cluster(
     user_id: str,
-    user_name: Optional[str] = None,
-    x_admin_secret: Optional[str] = Header(default=None),
+    user_name: str | None = None,
+    x_admin_secret: str | None = Header(default=None),
 ):
     require_admin_secret(x_admin_secret)
     return {"candidate": get_next_dedupe_cluster(user_id, user_name=user_name)}
@@ -583,7 +575,7 @@ def get_admin_dedupe_cluster(
 @app.post("/admin/dedupe-clusters/judge")
 def judge_admin_dedupe_cluster(
     body: DedupeClusterJudgementBody,
-    x_admin_secret: Optional[str] = Header(default=None),
+    x_admin_secret: str | None = Header(default=None),
 ):
     require_admin_secret(x_admin_secret)
     try:
@@ -607,6 +599,7 @@ def judge_admin_dedupe_cluster(
                 judgement,
                 body.user_id,
                 user_name=body.user_name,
+                user_prefix="openlobbying",
             )
     except DedupeLockError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
@@ -618,17 +611,17 @@ def judge_admin_dedupe_cluster(
 
 @app.get("/entities")
 def list_entities(
-    dataset: Optional[List[str]] = Query(None),
-    schema: Optional[str] = None,
+    dataset: list[str] | None = Query(None),
+    schema: str | None = None,
     limit: int = 25,
     offset: int = 0,
-) -> Dict[str, object]:
+) -> dict[str, object]:
     view = current_view()
     if not view:
         return {"results": [], "total": 0}
 
     allowed_schemata = _schema_filter_values(schema) if schema else None
-    results = []
+    results: list[dict[str, Any]] = []
 
     # Python-side filtering for simplicity in this MVP
     # Optimization: use SQL-side filtering if performance becomes an issue
@@ -662,7 +655,7 @@ def get_profile(
     id: str,
     activity_limit: int = PROFILE_ACTIVITY_DEFAULT_LIMIT,
     activity_offset: int = 0,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Endpoint for actor profiles, includes adjacency (timeline)."""
     ent = _get_entity_or_404(id, "Profile not found")
 
@@ -676,15 +669,11 @@ def get_profile(
 
     data = serialize_view_entity(ent)
     try:
-        data["adjacent"] = _serialize_profile_relationships(
-            _load_profile_relationship_items(id)
+        data["adjacent"] = _serialize_profile_relationships(_load_profile_relationship_items(id))
+        data["activities"] = _paginate_profile_activities_sql(id, activity_limit, activity_offset)
+        data["has_network"] = _has_profile_direct_adjacent(ent) or _has_profile_inverted_adjacent(
+            id
         )
-        data["activities"] = _paginate_profile_activities_sql(
-            id, activity_limit, activity_offset
-        )
-        data["has_network"] = _has_profile_direct_adjacent(
-            ent
-        ) or _has_profile_inverted_adjacent(id)
     except Exception as exc:
         log.exception(
             "Profile pagination query failed, falling back to full adjacency scan: %s",
@@ -704,7 +693,7 @@ def get_profile_activities(
     id: str,
     limit: int = 10,
     offset: int = 0,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     ent = _get_entity_or_404(id, "Profile not found")
 
     if not is_actor(ent.schema.name):
@@ -726,7 +715,7 @@ def get_profile_activities(
 def list_profile_sitemap_entries(
     limit: int = 50000,
     offset: int = 0,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """List actor profile paths for sitemap generation."""
     limit = max(1, min(limit, 50000))
     offset = max(0, offset)
@@ -753,7 +742,7 @@ def list_profile_sitemap_entries(
 
 
 @app.get("/statement/{id}")
-def get_statement(id: str) -> Dict[str, Any]:
+def get_statement(id: str) -> dict[str, Any]:
     """Endpoint for statements/events, simple view."""
     ent = _get_entity_or_404(id, "Statement not found")
 
@@ -769,8 +758,8 @@ def search_entities(
     q: str,
     limit: int = 25,
     offset: int = 0,
-    schema: Optional[List[str]] = Query(None),
-) -> Dict[str, Any]:
+    schema: list[str] | None = Query(None),
+) -> dict[str, Any]:
     view = current_view()
     requested_schema, schema_filter = _expand_actor_schema_filter(schema)
 
@@ -797,7 +786,7 @@ def search_entities(
 
 
 @app.get("/stats")
-def get_stats() -> Dict[str, Any]:
+def get_stats() -> dict[str, Any]:
     view = current_view()
     now = time.time()
     if _stats_cache["value"] is not None and _stats_cache["expires_at"] > now:
@@ -843,7 +832,7 @@ def get_stats() -> Dict[str, Any]:
 
 
 @app.get("/entities/{id}/graph")
-def get_entity_graph(id: str) -> Dict[str, Any]:
+def get_entity_graph(id: str) -> dict[str, Any]:
     """Get aggregated 1st-degree connections for graph visualization."""
     view = current_view()
     if not view:

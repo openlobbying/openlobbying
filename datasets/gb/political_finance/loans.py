@@ -1,7 +1,9 @@
 import csv
 from urllib.parse import urlencode
+
 from muckrake.util import parse_amount, parse_date
-from .common import make_donor, create_recipient_entity
+
+from .common import create_recipient_entity, make_donor
 
 
 def build_url(base, params):
@@ -15,8 +17,8 @@ def build_url(base, params):
     return f"{base}?{urlencode(parts)}"
 
 
-def crawl_loans(dataset):
-    """Crawl political loans from the Electoral Commission."""
+def fetch_loans(dataset):
+    """Fetch the Electoral Commission loans CSV; returns its path."""
     BASE_URL = "https://search.electoralcommission.org.uk/api/csv/Loans"
     PARAMS = {
         "query": "",
@@ -38,9 +40,12 @@ def crawl_loans(dataset):
 
     dataset.log.info(f"Crawling loans with params: {PARAMS}")
     url = build_url(BASE_URL, PARAMS)
-    path = dataset.fetch_resource("loans.csv", url)
+    return dataset.fetch_resource("loans.csv", url)
 
-    with open(path, "r", encoding="utf-8-sig") as fh:
+
+def process_loans(dataset, path, schema_overrides):
+    """Emit entities from a fetched loans CSV."""
+    with open(path, encoding="utf-8-sig") as fh:
         reader = csv.DictReader(fh)
 
         for row in reader:
@@ -59,9 +64,7 @@ def crawl_loans(dataset):
 
             # Parse loan data
             loan_ec_ref = row.get("ECRef")
-            loan_url = (
-                f"https://search.electoralcommission.org.uk/English/Loans/{loan_ec_ref}"
-            )
+            loan_url = f"https://search.electoralcommission.org.uk/English/Loans/{loan_ec_ref}"
             loan_value = row.get("Value")
             loan_start_date = row.get("StartDate")
             loan_end_date = row.get("EndDate")
@@ -81,6 +84,7 @@ def crawl_loans(dataset):
                 lender_reg_nr,
                 lender_postcode,
                 register_name,
+                schema_override=schema_overrides.get(lender_id),
             )
             dataset.emit(lender)
 

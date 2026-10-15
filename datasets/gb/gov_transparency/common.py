@@ -1,8 +1,14 @@
+from __future__ import annotations
+
 import importlib.util
 import re
 import sys
 from datetime import date
 from pathlib import Path
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from types import ModuleType
 
 MONTH_NAMES = {
     "january": 1,
@@ -20,7 +26,7 @@ MONTH_NAMES = {
 }
 
 
-def load_sibling_module(current_file: str, current_name: str, name: str):
+def load_sibling_module(current_file: str | Path, current_name: str, name: str) -> ModuleType:
     spec = importlib.util.spec_from_file_location(
         f"{current_name}.{name}",
         Path(current_file).with_name(f"{name}.py"),
@@ -43,8 +49,14 @@ def should_skip_row(values: list[str], skip_row_prefixes: list[str]) -> bool:
     normalised_values = [normalise_marker(value) for value in values if value.strip()]
     if not normalised_values:
         return False
-    normalised_prefixes = [normalise_marker(prefix) for prefix in skip_row_prefixes if prefix.strip()]
-    return any(value.startswith(prefix) for value in normalised_values for prefix in normalised_prefixes)
+    normalised_prefixes = [
+        normalise_marker(prefix) for prefix in skip_row_prefixes if prefix.strip()
+    ]
+    return any(
+        value.startswith(prefix) for value in normalised_values for prefix in normalised_prefixes
+    )
+
+
 def month_last_day(year: int, month: int) -> int:
     if month == 12:
         return 31

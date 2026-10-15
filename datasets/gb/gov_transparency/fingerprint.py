@@ -6,25 +6,31 @@ import re
 import sys
 from dataclasses import dataclass
 from datetime import datetime
+from functools import lru_cache
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from .normalise import NormalisedSheet as NormalisedSheetT
 
-try:
+if TYPE_CHECKING:
     from .normalise import NormalisedSheet
-except ImportError:
-    common_spec = importlib.util.spec_from_file_location(
-        f"{__name__}.common",
-        Path(__file__).with_name("common.py"),
-    )
-    if common_spec is None or common_spec.loader is None:
-        raise RuntimeError("Could not load gov-transparency common module")
-    common_module = importlib.util.module_from_spec(common_spec)
-    sys.modules[common_spec.name] = common_module
-    common_spec.loader.exec_module(common_module)
-    NormalisedSheet = common_module.load_sibling_module(__file__, __name__, "normalise").NormalisedSheet
+else:
+    try:
+        from .normalise import NormalisedSheet
+    except ImportError as err:
+        common_spec = importlib.util.spec_from_file_location(
+            f"{__name__}.common",
+            Path(__file__).with_name("common.py"),
+        )
+        if common_spec is None or common_spec.loader is None:
+            raise RuntimeError("Could not load gov-transparency common module") from err
+        common_module = importlib.util.module_from_spec(common_spec)
+        sys.modules[common_spec.name] = common_module
+        common_spec.loader.exec_module(common_module)
+        NormalisedSheet = common_module.load_sibling_module(
+            __file__, __name__, "normalise"
+        ).NormalisedSheet
 
 MONTH_NAMES = {
     "january",
@@ -53,7 +59,20 @@ MONTH_NAMES = {
     "dec",
 }
 
+# detect_header_row is called several times for the same sheet in a row
+# (fingerprint, header_signature, evaluate_rows, process_sheet), so remember only
+# the last few sheets. Keyed by the full sheet contents: an unbounded cache held
+# every sheet of a crawl and ran a full crawl out of memory.
 _HEADER_ROW_CACHE: dict[tuple[tuple[str, ...], ...], int] = {}
+_HEADER_ROW_CACHE_SIZE = 8
+
+
+def _remember_header_row(cache_key: tuple[tuple[str, ...], ...], row_index: int) -> int:
+    if len(_HEADER_ROW_CACHE) >= _HEADER_ROW_CACHE_SIZE:
+        del _HEADER_ROW_CACHE[next(iter(_HEADER_ROW_CACHE))]
+    _HEADER_ROW_CACHE[cache_key] = row_index
+    return row_index
+
 
 DATE_FORMATS = (
     "%d/%m/%Y",
@@ -81,7 +100,7 @@ class HeaderMatch:
     score: int
 
 
-def detect_header_row(sheet: "NormalisedSheetT") -> int:
+def detect_header_row(sheet: NormalisedSheetT) -> int:
     cache_key = tuple(tuple(row) for row in sheet.rows)
     cached = _HEADER_ROW_CACHE.get(cache_key)
     if cached is not None:
@@ -92,13 +111,13 @@ def detect_header_row(sheet: "NormalisedSheetT") -> int:
     best: HeaderMatch | None = None
     fallback_row: int | None = None
 
-    for row_index, row in enumerate(sheet.rows):
-        non_empty_cells = [cell for cell in row if cell.strip()]
+    non_empty_rows = [[cell for cell in row if cell.strip()] for row in sheet.rows]
+    for row_index, non_empty_cells in enumerate(non_empty_rows):
         if not non_empty_cells:
             continue
         if fallback_row is None and looks_like_title_row(non_empty_cells):
             fallback_row = row_index
-        score = score_header_candidate(sheet, row_index)
+        score = score_header_candidate(sheet.rows[row_index], non_empty_rows, row_index)
         if score is None:
             continue
         match = HeaderMatch(row_index=row_index, score=score)
@@ -106,33 +125,35 @@ def detect_header_row(sheet: "NormalisedSheetT") -> int:
             best = match
 
     if best is not None:
-        _HEADER_ROW_CACHE[cache_key] = best.row_index
-        return best.row_index
-    resolved = fallback_row or 0
-    _HEADER_ROW_CACHE[cache_key] = resolved
-    return resolved
+        return _remember_header_row(cache_key, best.row_index)
+    return _remember_header_row(cache_key, fallback_row or 0)
 
 
-def fingerprint(sheet: "NormalisedSheetT") -> str:
+def fingerprint(sheet: NormalisedSheetT) -> str:
     header_row = sheet.rows[detect_header_row(sheet)] if sheet.rows else []
     parts = [normalise_header_cell(cell) for cell in header_row if normalise_header_cell(cell)]
     key = "|".join(parts)
     return hashlib.sha256(key.encode("utf-8")).hexdigest()[:16]
 
 
-def header_signature(sheet: "NormalisedSheetT") -> list[str]:
+def header_signature(sheet: NormalisedSheetT) -> list[str]:
     header_row = sheet.rows[detect_header_row(sheet)] if sheet.rows else []
     return [normalise_header_cell(cell) for cell in header_row if normalise_header_cell(cell)]
 
 
-def score_header_candidate(sheet: "NormalisedSheetT", row_index: int) -> int | None:
-    row = sheet.rows[row_index]
-    non_empty_cells = [cell for cell in row if cell.strip()]
+def score_header_candidate(
+    row: list[str], non_empty_rows: list[list[str]], row_index: int
+) -> int | None:
+    non_empty_cells = non_empty_rows[row_index]
     if not non_empty_cells:
         return None
     if is_disclaimer_row(non_empty_cells):
         return None
-    if is_uniform_row(non_empty_cells) and not looks_like_title_row(non_empty_cells) and not looks_like_header_row(non_empty_cells):
+    if (
+        is_uniform_row(non_empty_cells)
+        and not looks_like_title_row(non_empty_cells)
+        and not looks_like_header_row(non_empty_cells)
+    ):
         return None
 
     score = 0
@@ -155,11 +176,13 @@ def score_header_candidate(sheet: "NormalisedSheetT", row_index: int) -> int | N
     if looks_like_title_row(non_empty_cells):
         score -= 10
 
-    next_rows = following_non_empty_rows(sheet.rows, row_index, limit=2)
+    next_rows = following_non_empty_rows(non_empty_rows, row_index, limit=2)
     if next_rows:
         data_like_next_rows = sum(1 for candidate in next_rows if looks_like_data_row(candidate))
         score += data_like_next_rows * 4
-        header_like_next_rows = sum(1 for candidate in next_rows if looks_like_header_row(candidate))
+        header_like_next_rows = sum(
+            1 for candidate in next_rows if looks_like_header_row(candidate)
+        )
         score -= header_like_next_rows * 3
 
     if label_like == 0:
@@ -167,10 +190,11 @@ def score_header_candidate(sheet: "NormalisedSheetT", row_index: int) -> int | N
     return score
 
 
-def following_non_empty_rows(rows: list[list[str]], row_index: int, limit: int) -> list[list[str]]:
+def following_non_empty_rows(
+    non_empty_rows: list[list[str]], row_index: int, limit: int
+) -> list[list[str]]:
     candidates: list[list[str]] = []
-    for candidate in rows[row_index + 1 :]:
-        non_empty_cells = [cell for cell in candidate if cell.strip()]
+    for non_empty_cells in non_empty_rows[row_index + 1 :]:
         if not non_empty_cells:
             continue
         candidates.append(non_empty_cells)
@@ -187,10 +211,12 @@ def looks_like_data_row(values: list[str]) -> bool:
     return value_like >= 1 or value_like >= label_like
 
 
+@lru_cache(maxsize=65536)
 def normalise_text(value: str) -> str:
     return re.sub(r"\s+", " ", value.strip().lower())
 
 
+@lru_cache(maxsize=65536)
 def normalise_header_cell(value: str) -> str:
     text = normalise_text(value)
     text = re.sub(r"\([^)]*£[^)]*\)", "", text)
@@ -234,13 +260,16 @@ def is_disclaimer_row(values: list[str]) -> bool:
     return False
 
 
+@lru_cache(maxsize=65536)
 def looks_like_label(value: str) -> bool:
     text = normalise_header_cell(value)
     if not text:
         return False
     if looks_like_pure_data(text):
         return False
-    if len(text) > 80 and not re.search(r"\b(and|or|from|to|type|transport|accompanied|spouse|family|friend)\b", text):
+    if len(text) > 80 and not re.search(
+        r"\b(and|or|from|to|type|transport|accompanied|spouse|family|friend)\b", text
+    ):
         return False
     if re.search(
         r"\b(name|names|date|dates|period|purpose|purposes|meeting|meetings|gift|gifts|given|received|hospitality|travel|travels|organization|organizations|minister|ministers|advisor|advisors|value|values|outcome|outcomes|destination|destinations|cost|costs|media|role|roles|employment|outside_employment|official|officials|person|people|guest|guests|from|to|from/to|type|transport|accompanied|spouse|family|friend|start|end)\b",
@@ -250,6 +279,7 @@ def looks_like_label(value: str) -> bool:
     return False
 
 
+@lru_cache(maxsize=65536)
 def looks_like_pure_data(value: str) -> bool:
     text = value.strip()
     if not text:
@@ -261,11 +291,13 @@ def looks_like_pure_data(value: str) -> bool:
     return False
 
 
+@lru_cache(maxsize=65536)
 def looks_like_number(value: str) -> bool:
     cleaned = value.replace(",", "").replace("£", "").replace("$", "").replace("%", "")
     return re.fullmatch(r"[+-]?\d+(?:\.\d+)?", cleaned) is not None
 
 
+@lru_cache(maxsize=65536)
 def looks_like_date(value: str) -> bool:
     lowered = normalise_text(value)
     if lowered in MONTH_NAMES:
@@ -276,6 +308,9 @@ def looks_like_date(value: str) -> bool:
         return True
     if re.fullmatch(r"[A-Za-z]{3,9}-\d{2,4}", value):
         return True
+    # Every DATE_FORMATS entry needs digits; skip the costly strptime attempts otherwise.
+    if not any(char.isdigit() for char in value):
+        return False
     for date_format in DATE_FORMATS:
         try:
             datetime.strptime(value, date_format)

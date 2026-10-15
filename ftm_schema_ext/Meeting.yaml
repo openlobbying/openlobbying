@@ -1,0 +1,29 @@
+Meeting:
+  label: "Meeting"
+  plural: "Meetings"
+  description: >
+    A meeting between government officials and external organisations, as
+    published in transparency releases and lobbying registers.
+  extends:
+    - Event
+  matchable: false
+  featured:
+    - name
+    - date
+    - organizer
+    - involved
+  caption:
+    - name
+    - summary
+    - date
+  properties:
+    purpose:
+      label: "Purpose"
+      type: text
+    beneficiary:
+      label: "Beneficiary"
+      type: entity
+      range: LegalEntity
+      reverse:
+        name: beneficiaryMeetings
+        label: "Meetings (as beneficiary)"

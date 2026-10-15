@@ -9,9 +9,7 @@ def make_committee(dataset, item):
         "committee", committee_id, reg_nr=committee_id, register="GB-CMTE"
     )
 
-    committee.add(
-        "sourceUrl", f"https://committees.parliament.uk/committee/{committee_id}"
-    )
+    committee.add("sourceUrl", f"https://committees.parliament.uk/committee/{committee_id}")
 
     # assign name
     committee.add("name", item.get("name"))
@@ -201,9 +199,7 @@ def make_evidence_event(dataset, item, type):
     event = dataset.make("Event")
     item_id = item.get("id")
     event.id = dataset.make_id(f"{type}_evidence", item_id)
-    event.add(
-        "sourceUrl", f"https://committees.parliament.uk/{type}evidence/{item_id}/html/"
-    )
+    event.add("sourceUrl", f"https://committees.parliament.uk/{type}evidence/{item_id}/html/")
 
     businesses = item.get("committeeBusinesses") or []
     for business in businesses:
@@ -237,15 +233,27 @@ def make_mp(dataset, member_data):
 
     member = dataset.make("Person")
     member_id = member_data.get("id")
-    member.id = dataset.make_id(
-        "member", member_id, reg_nr=member_id, register="GB-MEMBER"
-    )
+    member.id = dataset.make_id("member", member_id, reg_nr=member_id, register="GB-MEMBER")
     member.add("name", member_data.get("nameDisplayAs"))
     member.add("alias", member_data.get("nameListAs"))
     member.add("topics", "role.pep")
     member.add("jurisdiction", "gb")
     dataset.emit(member)
     return member
+
+
+def legal_entity_id(dataset, schema, name, reg_nr=None, register=None):
+    """ID for a named party: an org-id when a registration number is given.
+
+    People get their own namespace: the register sometimes files the same
+    name as an individual in one entry and a company in another, and a
+    Person can't share an ID with an Organization.
+    """
+    if reg_nr and register:
+        return dataset.make_id("entity", name, reg_nr=reg_nr, register=register)
+    if schema == "Person":
+        return dataset.make_id("person", name)
+    return dataset.make_id("entity", name)
 
 
 def make_legal_entity(
@@ -272,12 +280,7 @@ def make_legal_entity(
         return None
 
     entity = dataset.make(schema)
-
-    # Use structured org-id if registration number is provided
-    if reg_nr and register:
-        entity.id = dataset.make_id("entity", name, reg_nr=reg_nr, register=register)
-    else:
-        entity.id = dataset.make_id("entity", name)
+    entity.id = legal_entity_id(dataset, schema, name, reg_nr, register)
 
     entity.add("name", name)
 
@@ -289,3 +292,35 @@ def make_legal_entity(
     entity.add("jurisdiction", "gb")
     dataset.emit(entity)
     return entity
+
+
+def iter_api_items(dataset, url, params, skip_key="skip", take_key="take"):
+    """Yield every item from a paginated Parliament API (skip/take + totalResults).
+
+    Records a completeness warning if fewer items arrive than the API reports,
+    e.g. because a page came back empty part way through.
+    """
+    params = dict(params)
+    received = 0
+    total = None
+    while True:
+        dataset.log.info(f"Fetching {url} with params: {params}")
+        data = dataset.fetch_json(url, params=params, cache_days=7)
+        if data is None:
+            break
+        total = data.get("totalResults", total)
+        items = data.get("items", [])
+        if not items:
+            break
+        yield from items
+        received += len(items)
+        # Advance by what the API returned, not what was asked for: some APIs cap
+        # the page size below `take` (the Register of Interests returns 20 for
+        # Take=100), and skipping by `take` silently drops the difference.
+        params[skip_key] += len(items)
+        if total is not None and params[skip_key] >= total:
+            break
+    if total is None or received < total:
+        dataset.warn_incomplete(
+            "fewer API items than totalResults", url=url, received=received, total=total
+        )

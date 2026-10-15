@@ -1,7 +1,12 @@
-from pathlib import Path
+from __future__ import annotations
+
 import importlib.util
 import sys
+from pathlib import Path
+from typing import TYPE_CHECKING
 
+if TYPE_CHECKING:
+    from datasets.gb.gov_transparency.normalise import NormalisedSheet as NormalisedSheetT
 
 MODULE_PATH = Path("datasets/gb/gov_transparency/normalise.py")
 SPEC = importlib.util.spec_from_file_location("gov_transparency_normalise", MODULE_PATH)
@@ -15,14 +20,14 @@ NormalisedSheet = MODULE.NormalisedSheet
 detect_file_format = MODULE.detect_file_format
 normalise = MODULE.normalise
 
-RESOURCE_ROOT = Path("data/datasets/gb_gov_transparency/resources")
+RESOURCE_ROOT = Path(__file__).parent / "fixtures" / "gov_transparency"
 
 
 def load_fixture(relative_path: str) -> bytes:
     return (RESOURCE_ROOT / relative_path).read_bytes()
 
 
-def assert_non_empty_sheets(sheets: list[NormalisedSheet]):
+def assert_non_empty_sheets(sheets: list[NormalisedSheetT]) -> None:
     assert sheets
     assert all(isinstance(sheet.name, str) and sheet.name for sheet in sheets)
     assert all(isinstance(sheet.rows, list) for sheet in sheets)
