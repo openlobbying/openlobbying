@@ -54,7 +54,19 @@ MONTH_NAMES = {
     "dec",
 }
 
+# detect_header_row is called several times for the same sheet in a row
+# (fingerprint, header_signature, evaluate_rows, process_sheet), so remember only
+# the last few sheets. Keyed by the full sheet contents: an unbounded cache held
+# every sheet of a crawl and ran a full crawl out of memory.
 _HEADER_ROW_CACHE: dict[tuple[tuple[str, ...], ...], int] = {}
+_HEADER_ROW_CACHE_SIZE = 8
+
+
+def _remember_header_row(cache_key: tuple[tuple[str, ...], ...], row_index: int) -> int:
+    if len(_HEADER_ROW_CACHE) >= _HEADER_ROW_CACHE_SIZE:
+        del _HEADER_ROW_CACHE[next(iter(_HEADER_ROW_CACHE))]
+    _HEADER_ROW_CACHE[cache_key] = row_index
+    return row_index
 
 DATE_FORMATS = (
     "%d/%m/%Y",
@@ -107,11 +119,8 @@ def detect_header_row(sheet: "NormalisedSheetT") -> int:
             best = match
 
     if best is not None:
-        _HEADER_ROW_CACHE[cache_key] = best.row_index
-        return best.row_index
-    resolved = fallback_row or 0
-    _HEADER_ROW_CACHE[cache_key] = resolved
-    return resolved
+        return _remember_header_row(cache_key, best.row_index)
+    return _remember_header_row(cache_key, fallback_row or 0)
 
 
 def fingerprint(sheet: "NormalisedSheetT") -> str:
