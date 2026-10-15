@@ -320,7 +320,10 @@ def iter_api_items(dataset, url, params, skip_key="skip", take_key="take"):
             break
         yield from items
         received += len(items)
-        params[skip_key] += params[take_key]
+        # Advance by what the API returned, not what was asked for: some APIs cap
+        # the page size below `take` (the Register of Interests returns 20 for
+        # Take=100), and skipping by `take` silently drops the difference.
+        params[skip_key] += len(items)
         if total is not None and params[skip_key] >= total:
             break
     if total is None or received < total:
