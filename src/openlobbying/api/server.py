@@ -274,6 +274,7 @@ def _paginate_profile_activities(
 
 
 def _paginate_profile_activities_sql(entity_id: str, limit: int, offset: int) -> Dict[str, Any]:
+    view = current_view()
     table, filters = _get_profile_statement_query_parts(entity_id, PROFILE_ACTIVITY_SCHEMATA)
     sort_expr = _get_profile_activity_sort_expression(table)
 
