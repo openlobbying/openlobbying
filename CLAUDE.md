@@ -41,7 +41,7 @@ Auth is `better-auth` (email/password; Kysely + `pg` against `MUCKRAKE_DATABASE_
 
 ## Environment
 
-Repo-root `.env` (template `.env.example`), shared by Python and the frontend; muckrake discovers it automatically when run from here. Key vars: `MUCKRAKE_DATABASE_URL` (working DB), `MUCKRAKE_PUBLISHED_DATABASE_URL` (serving DB — keep separate when testing releases), `OPENLOBBYING_API_URL`, `BETTER_AUTH_*`, `OPENROUTER_API_KEY` + `LLM_MODEL` for LLM NER. Production env lives on the server at `/etc/openlobbying/app.env`; `ops/deploy_to_vps.sh` does **not** sync local `.env`. The server keeps this repo and muckrake side by side (`/home/deploy/{openlobbying,muckrake}`). The app serves a runtime sitemap index at `/sitemap.xml` backed by the API.
+Repo-root `.env` (template `.env.example`), shared by Python and the frontend; muckrake discovers it automatically when run from here. Key vars: `MUCKRAKE_DATABASE_URL` (working DB), `MUCKRAKE_PUBLISHED_DATABASE_URL` (serving DB — keep separate when testing releases), `OPENLOBBYING_API_URL`, `BETTER_AUTH_*`, `LLM_MODEL` plus `OPENROUTER_API_KEY` or `ANTHROPIC_API_KEY` for LLM NER (paid results are kept in `ner/`; see `ner/README.md`). Production env lives on the server at `/etc/openlobbying/app.env`; `ops/deploy_to_vps.sh` does **not** sync local `.env`. The server keeps this repo and muckrake side by side (`/home/deploy/{openlobbying,muckrake}`). The app serves a runtime sitemap index at `/sitemap.xml` backed by the API.
 
 ## Conventions
 
