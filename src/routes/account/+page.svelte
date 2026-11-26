@@ -23,7 +23,7 @@
 
 		try {
 			await authClient.signOut();
-			await goto('/login', { invalidateAll: true });
+			await goto('/login', { refreshAll: true });
 		} finally {
 			isSigningOut = false;
 		}

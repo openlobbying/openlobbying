@@ -1,7 +1,7 @@
-import { building } from '$app/environment';
+import { building } from '$app/env';
 import { auth, ensureAuthSchema } from '$lib/server/auth';
 import { svelteKitHandler } from 'better-auth/svelte-kit';
-import type { Handle } from '@sveltejs/kit';
+import type { Handle } from '@sveltejs/kit/hooks';
 
 export const handle: Handle = async ({ event, resolve }) => {
 	await ensureAuthSchema();

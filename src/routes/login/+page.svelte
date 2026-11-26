@@ -85,7 +85,7 @@
 					return;
 				}
 
-				await goto(data.redirectTo, { invalidateAll: true });
+				await goto(data.redirectTo, { refreshAll: true });
 				return;
 			}
 
@@ -101,7 +101,7 @@
 			}
 
 			successMessage = 'Account created. Redirecting...';
-			await goto(data.redirectTo, { invalidateAll: true });
+			await goto(data.redirectTo, { refreshAll: true });
 		} finally {
 			isSubmitting = false;
 		}

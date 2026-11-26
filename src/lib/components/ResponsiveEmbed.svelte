@@ -1,5 +1,5 @@
 <script lang="ts">
-	let { src, title } = $props<{ src: string; title: string }>();
+	let { src, title }: { src: string; title: string } = $props();
 </script>
 
 <div class="embed-frame">

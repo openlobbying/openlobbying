@@ -1,6 +1,6 @@
-import { dev } from '$app/environment';
+import { dev } from '$app/env';
 import { getRequestEvent } from '$app/server';
-import { env } from '$env/dynamic/private';
+import * as privateEnv from '$app/env/private';
 import { ADMIN_ROLE } from '$lib/auth-roles';
 import { betterAuth } from 'better-auth';
 import { getMigrations } from 'better-auth/db/migration';
@@ -38,6 +38,7 @@ function readEnvFile(fileUrl: URL): Record<string, string> {
 	}
 }
 
+const env: Record<string, string | undefined> = privateEnv;
 const repoEnv = dev ? readEnvFile(new URL('../../../../.env', import.meta.url)) : {};
 
 export function resolveEnvValue(...keys: string[]): string | undefined {

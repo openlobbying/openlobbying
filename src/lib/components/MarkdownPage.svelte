@@ -1,11 +1,16 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
-	let { title, description = '', updated = '', children } = $props<{
+	let {
+		title,
+		description = '',
+		updated = '',
+		children
+	}: {
 		title?: string;
 		description?: string;
 		updated?: string;
 		children?: Snippet;
-	}>();
+	} = $props();
 </script>
 
 <svelte:head>
