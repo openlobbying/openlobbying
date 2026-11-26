@@ -16,15 +16,6 @@ jobs:
         with:
           path: openlobbying
 
-      # muckrake is an editable path dependency (../muckrake); test against the
-      # muckrake branch matching this one's target (develop or main).
-      - name: Check out muckrake
-        uses: actions/checkout@v5
-        with:
-          repository: openlobbying/muckrake
-          ref: ${{ github.base_ref || github.ref_name }}
-          path: muckrake
-
       - name: Set up uv
         uses: astral-sh/setup-uv@v6
 
