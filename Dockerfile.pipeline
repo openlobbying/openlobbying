@@ -33,7 +33,10 @@ RUN uv sync --frozen --no-dev --no-install-project
 # ---- Runtime ----
 FROM python:3.13-slim-bookworm
 
+# git lets muckrake record the commit of the mounted checkout as each run's and
+# ingest's code_version. That commit's uv.lock pins the exact muckrake.
 RUN apt-get update && apt-get install -y --no-install-recommends \
+    git \
     libleveldb1d \
     libicu72 \
     && rm -rf /var/lib/apt/lists/*
