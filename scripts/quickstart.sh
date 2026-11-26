@@ -5,7 +5,7 @@
 # CI runs this on every PR (.github/workflows/quickstart.yml), so it is the tested
 # version of the README's Quickstart section. Change both together.
 #
-# Prerequisites: muckrake cloned next to this repo (../muckrake) and `uv sync` done.
+# Prerequisites: `uv sync` done.
 # It writes only to data/ in this checkout. The database URLs are set here, so a
 # Postgres URL in your .env is ignored (exported variables win over .env).
 #

@@ -14,13 +14,7 @@ Work is tracked in this repo's issues and on the maintainers' [project board](ht
 ## Prerequisites
 
 - [uv](https://docs.astral.sh/uv/) (it installs the Python version the project needs) and Node 24 with npm.
-- **muckrake cloned next to this repo.** `pyproject.toml` uses `../muckrake` as an editable path dependency, so `uv sync` fails without it:
-
-  ```sh
-  git clone https://github.com/openlobbying/muckrake.git
-  git clone https://github.com/openlobbying/openlobbying.git
-  ```
-
+- This repo, cloned: `git clone https://github.com/openlobbying/openlobbying.git`. `uv sync` installs the muckrake release pinned in `pyproject.toml` from PyPI. To work on muckrake at the same time, see [muckrake in CONTRIBUTING](CONTRIBUTING.md#muckrake).
 - **ICU and pkg-config**, which `pyicu` (via nomenklatura and rigour) compiles against:
   - macOS: `brew install pkg-config icu4c`, then `export PKG_CONFIG_PATH="$(brew --prefix icu4c)/lib/pkgconfig"` before `uv sync` (Homebrew's `icu4c` is keg-only, so pkg-config can't find it otherwise).
   - Debian/Ubuntu: `sudo apt-get install pkg-config libicu-dev libleveldb-dev`.

@@ -1157,7 +1157,7 @@ wheels = [
 [[package]]
 name = "muckrake"
 version = "0.5.1"
-source = { editable = "../muckrake" }
+source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "beautifulsoup4" },
     { name = "click" },
@@ -1178,37 +1178,9 @@ dependencies = [
     { name = "requests" },
     { name = "xlrd" },
 ]
-
-[package.metadata]
-requires-dist = [
-    { name = "beautifulsoup4", specifier = ">=4.14.3" },
-    { name = "click", specifier = ">=8.3.1" },
-    { name = "datapatch", specifier = ">=1.2.4" },
-    { name = "followthemoney", specifier = ">=4.11" },
-    { name = "logfire", extras = ["httpx", "sqlalchemy"], specifier = ">=4.24.0" },
-    { name = "lxml", specifier = ">=6.0.2" },
-    { name = "nomenklatura", specifier = ">=4.18" },
-    { name = "numpy", specifier = ">=1.26" },
-    { name = "odfpy", specifier = ">=1.4.1" },
-    { name = "openpyxl", specifier = ">=3.1.5" },
-    { name = "org-id", specifier = ">=0.1.1" },
-    { name = "pandas", specifier = ">=2.3.3" },
-    { name = "plyvel", specifier = ">=1.5.1" },
-    { name = "psycopg", extras = ["binary"], specifier = ">=3.2.12" },
-    { name = "pydantic-ai-slim", extras = ["anthropic", "google", "openrouter"], specifier = ">=1.0.0,<2" },
-    { name = "pyyaml", specifier = ">=6.0.3" },
-    { name = "requests", specifier = ">=2.32.5" },
-    { name = "xlrd", specifier = ">=2.0.2" },
-]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "mypy", specifier = ">=1.19" },
-    { name = "pre-commit", specifier = ">=4.0" },
-    { name = "pytest", specifier = ">=9.0.3" },
-    { name = "ruff", specifier = ">=0.15" },
-    { name = "types-pyyaml", specifier = ">=6.0" },
-    { name = "types-requests", specifier = ">=2.32" },
+sdist = { url = "https://files.pythonhosted.org/packages/9c/3d/e7c193cc215789266bb68b09f653e40b651a5007fc29e37ced1aabbd2e8a/muckrake-0.5.1.tar.gz", hash = "sha256:a79779217d3974ead2331fb74d181dea9728309c1d0316f6fdfa48b827ae1710", size = 76011, upload-time = "2026-11-25T09:54:08.659Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/4c/6b/4f09f40285bcc6116ea429e0081065d606e554869dcb0e12c1163e5166e6/muckrake-0.5.1-py3-none-any.whl", hash = "sha256:d902dea904a6c4714264b9a77794035a2066f0f35257486f69a839b160965a52", size = 91751, upload-time = "2026-11-25T09:54:07.584Z" },
 ]
 
 [[package]]
@@ -1432,7 +1404,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "fastapi", specifier = ">=0.127.0" },
-    { name = "muckrake", editable = "../muckrake" },
+    { name = "muckrake", specifier = "==0.5.1" },
     { name = "uvicorn", specifier = ">=0.40.0" },
 ]
 

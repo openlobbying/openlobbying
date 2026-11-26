@@ -9,7 +9,7 @@ authors = [
 requires-python = ">=3.13"
 dependencies = [
     "fastapi>=0.127.0",
-    "muckrake",
+    "muckrake==0.5.1",
     "uvicorn>=0.40.0",
 ]
 
@@ -19,9 +19,6 @@ openlobbying = "openlobbying.cli:cli"
 [build-system]
 requires = ["uv_build>=0.9.17,<0.10.0"]
 build-backend = "uv_build"
-
-[tool.uv.sources]
-muckrake = { path = "../muckrake", editable = true }
 
 [dependency-groups]
 dev = [

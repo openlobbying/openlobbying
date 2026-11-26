@@ -21,14 +21,6 @@ jobs:
         with:
           path: openlobbying
 
-      # The README's first step: clone muckrake next to this repo.
-      - name: Check out muckrake
-        uses: actions/checkout@v5
-        with:
-          repository: openlobbying/muckrake
-          ref: ${{ github.base_ref || 'develop' }}
-          path: muckrake
-
       - name: Set up uv
         uses: astral-sh/setup-uv@v6
 

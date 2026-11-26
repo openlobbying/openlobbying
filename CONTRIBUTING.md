@@ -6,12 +6,80 @@ Setup is in the [README](README.md): Prerequisites, then Quickstart.
 
 - `develop` is the default branch and where work is integrated. Branch from `develop` and open pull requests into `develop`. Name branches `<type>/<short-name>`, with types `feature/`, `fix/`, `perf/`, `test/`, `ci/`, `docs/`, `data/` (a new or changed crawler) and `release/`.
 - `main` is protected and only changes through pull requests. It holds released checkpoints.
-- A release is a pull request from `develop` into `main`, merged with a merge commit (not squashed). muckrake is released first, since this repo depends on it.
+- A release is a pull request from `develop` into `main`, merged with a merge commit (not squashed). muckrake is released first, since this repo depends on it, and `main` always pins a muckrake release (see [muckrake](#muckrake)).
 - Hotfixes are not used while the current production site is frozen: fixes go through `develop`. Once the replacement is live, hotfixes branch from `main`, merge into `main`, and are then merged back into `develop`.
+
+## muckrake
+
+This repo installs a muckrake release pinned in `pyproject.toml`:
+
+```toml
+dependencies = [
+    "muckrake==0.5.1",
+]
+```
+
+`uv.lock` records the release with its file hashes, so `uv sync --locked` installs exactly that release in CI and on every machine.
+
+### Framework and project development
+
+| Mode | What you're changing | Where muckrake comes from | Run commands with |
+|---|---|---|---|
+| Project development | This repo only | The pinned release | `uv run <command>` |
+| Framework development | muckrake, usually alongside this repo | Your local `../muckrake` checkout | `uv run --with-editable ../muckrake <command>` |
+
+Only framework development uses your local muckrake. CI, staging and ingests use the pinned release.
+
+For framework development, clone muckrake next to this repo and run commands from this repo:
+
+```sh
+uv run --with-editable ../muckrake pytest
+uv run --with-editable ../muckrake muckrake crawl gb_prca
+```
+
+Edits in `../muckrake` apply on the next command. `pyproject.toml` and `uv.lock` don't change, so there is nothing to undo: a plain `uv run` uses the pinned release again. An alias saves typing, for example `alias uvf='uv run --with-editable ../muckrake'`. `uv sync` and your editor's interpreter still see the pinned release.
+
+The umbrella stack's Docker runner (`docker compose run --rm muckrake` in undertheinfluence) is still built from `../muckrake`, so it runs your local muckrake. Moving it to the pinned release is [Build the umbrella pipeline runner from openlobbying's lock (pinned muckrake)](https://github.com/openlobbying/undertheinfluence/issues/11).
+
+### Releasing a change that spans both repos
+
+Framework first, then project:
+
+1. Merge the muckrake change into muckrake's `develop` and release it, as in [muckrake's CONTRIBUTING](https://github.com/openlobbying/muckrake/blob/develop/CONTRIBUTING.md#releases).
+2. In this repo, open a pull request that bumps the pin and includes the changes that use it. Set `muckrake==X.Y.Z` in `pyproject.toml`, run `uv lock`, and link the muckrake changelog entry in the pull request.
+
+This repo's pull request can't merge first: CI installs the pinned release, which doesn't have the muckrake change yet.
+
+To use a merged muckrake change on `develop` before it's released, pin the commit and run `uv lock`:
+
+```toml
+[tool.uv.sources]
+muckrake = { git = "https://github.com/openlobbying/muckrake", rev = "<full commit SHA>" }
+```
+
+While the override is in place, uv installs that commit and ignores the `muckrake==` version. Replace the override with a release before `develop` is released to `main`: `main` always pins a muckrake release.
+
+### Moving from the `../muckrake` checkout
+
+Until 26 November 2026, this repo installed muckrake from `../muckrake` as an editable path dependency ([Pin muckrake to a PyPI release instead of the ../muckrake checkout](https://github.com/openlobbying/openlobbying/issues/75)).
+
+| | Before | After |
+|---|---|---|
+| Where muckrake comes from | The `../muckrake` checkout, on whatever branch it was | The release pinned in `pyproject.toml` |
+| How a muckrake change reaches this repo | Straight away | Through a pull request that bumps the pin |
+| CI | Checked out the muckrake branch matching the pull request's target | Installs the pinned release |
+| The `../muckrake` checkout | Required | Only for framework development |
+
+To move an existing checkout:
+
+1. Pull `develop`.
+2. Run `uv sync`. It replaces the editable muckrake with the pinned release.
+3. For framework development, run commands with `uv run --with-editable ../muckrake`.
+
+Not changed yet: the umbrella stack's runner (see [Framework and project development](#framework-and-project-development)), and `ops/deploy_to_vps.sh`, which still copies `../muckrake` to the server. The current production site is frozen, so the script is left as it is.
 
 ## In this repo
 
-- This repo runs muckrake from `../muckrake`. Keep that checkout on the matching branch: `develop` for dev work, `main` for a release. CI checks out the muckrake branch with the same name as your PR's target.
 - Before pushing:
   - `uv run pytest` (crawler tests live in `tests/`)
   - `uv run ruff check .`, `uv run ruff format --check .` and `uv run mypy src datasets tests scripts` (or `uv run pre-commit install` once, so ruff runs on each commit)
