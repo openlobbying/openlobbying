@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { Badge } from '$lib/components/ui/badge';
-	import type { DatasetMetadata } from '$lib/types';
+	import { Badge } from '#lib/components/ui/badge/index.js';
+	import type { DatasetMetadata } from '#lib/types.js';
 
 	type DatasetListVariant = 'badges' | 'inline' | 'stacked';
 

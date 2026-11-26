@@ -1,4 +1,4 @@
-import { getEntityRoute } from '$lib/util/routes';
+import { getEntityRoute } from '#lib/util/routes.js';
 
 export interface DetailRow {
 	key: string;

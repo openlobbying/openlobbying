@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { getKeyDetails } from "$lib/util/entity_config";
-	import { Card, CardContent, CardHeader, CardTitle } from '$lib/components/ui/card';
+	import { getKeyDetails } from "#lib/util/entity_config.js";
+	import { Card, CardContent, CardHeader, CardTitle } from '#lib/components/ui/card/index.js';
 
 	let { entity } = $props();
 

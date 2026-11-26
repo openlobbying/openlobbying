@@ -1,10 +1,10 @@
 <script lang="ts">
-	import DatasetList from '$lib/components/DatasetList.svelte';
-	import Properties from '$lib/components/Properties.svelte';
-	import { Badge } from '$lib/components/ui/badge';
-	import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '$lib/components/ui/card';
-	import type { Entity } from '$lib/types';
-	import { getEntityRoute } from '$lib/util/routes';
+	import DatasetList from '#lib/components/DatasetList.svelte';
+	import Properties from '#lib/components/Properties.svelte';
+	import { Badge } from '#lib/components/ui/badge/index.js';
+	import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '#lib/components/ui/card/index.js';
+	import type { Entity } from '#lib/types.js';
+	import { getEntityRoute } from '#lib/util/routes.js';
 
 	interface Props {
 		entity: Entity;

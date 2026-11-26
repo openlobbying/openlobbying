@@ -1,14 +1,14 @@
 <script lang="ts">
 	import { page } from '$app/state';
-	import { isAdminUser } from '$lib/auth-roles';
-	import Footer from '$lib/components/Footer.svelte';
-	import favicon from '$lib/assets/favicon.svg';
+	import { isAdminUser } from '#lib/auth-roles.js';
+	import Footer from '#lib/components/Footer.svelte';
+	import favicon from '#lib/assets/favicon.svg';
 	import type { LayoutProps } from './$types';
-	import { Card, CardContent } from '$lib/components/ui/card';
-	import { Input } from '$lib/components/ui/input';
-	import * as NavigationMenu from '$lib/components/ui/navigation-menu';
-	import { navigationMenuTriggerStyle } from '$lib/components/ui/navigation-menu/navigation-menu-trigger.svelte';
-	import * as Sheet from '$lib/components/ui/sheet';
+	import { Card, CardContent } from '#lib/components/ui/card/index.js';
+	import { Input } from '#lib/components/ui/input/index.js';
+	import * as NavigationMenu from '#lib/components/ui/navigation-menu/index.js';
+	import { navigationMenuTriggerStyle } from '#lib/components/ui/navigation-menu/navigation-menu-trigger.svelte';
+	import * as Sheet from '#lib/components/ui/sheet/index.js';
 	import { Github, Menu, Search } from '@lucide/svelte';
 	import '../app.css';
 

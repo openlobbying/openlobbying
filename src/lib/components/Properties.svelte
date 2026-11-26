@@ -1,8 +1,8 @@
 <script lang="ts">
-	import { getEntityRoute } from '$lib/util/routes';
-	import { Badge } from '$lib/components/ui/badge';
-	import { getPropertyLabel } from '$lib/presentation/property-profile';
-	import { renderableValue } from '$lib/util/detail';
+	import { getEntityRoute } from '#lib/util/routes.js';
+	import { Badge } from '#lib/components/ui/badge/index.js';
+	import { getPropertyLabel } from '#lib/presentation/property-profile.js';
+	import { renderableValue } from '#lib/util/detail.js';
 
 	interface Props {
 		properties: Record<string, any[]>;

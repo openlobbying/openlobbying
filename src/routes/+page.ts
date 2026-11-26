@@ -1,5 +1,5 @@
 import type { PageLoad } from './$types';
-import type { HomeStats } from '$lib/types';
+import type { HomeStats } from '#lib/types.js';
 
 const EMPTY_STATS: HomeStats = {
 	organizations: 0,

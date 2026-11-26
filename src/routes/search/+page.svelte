@@ -1,18 +1,18 @@
 <script lang="ts">
-	import { getEntityRoute } from '$lib/util/routes';
+	import { getEntityRoute } from '#lib/util/routes.js';
 	import { Search } from '@lucide/svelte';
-	import type { SearchResponse } from '$lib/types';
-	import { Button } from '$lib/components/ui/button';
+	import type { SearchResponse } from '#lib/types.js';
+	import { Button } from '#lib/components/ui/button/index.js';
 	import {
 		Card,
 		CardContent,
 		CardHeader,
 		CardTitle,
 		CardDescription
-	} from '$lib/components/ui/card';
-	import { Input } from '$lib/components/ui/input';
-	import { Skeleton } from '$lib/components/ui/skeleton/index.js';
-	import { Badge } from '$lib/components/ui/badge';
+	} from '#lib/components/ui/card/index.js';
+	import { Input } from '#lib/components/ui/input/index.js';
+	import { Skeleton } from '#lib/components/ui/skeleton/index.js';
+	import { Badge } from '#lib/components/ui/badge/index.js';
 
 	interface SearchPageData {
 		query: string;

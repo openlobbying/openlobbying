@@ -37,7 +37,7 @@ Always run Python via `uv` (never `python`/`python3`/`pip` directly). Run muckra
 
 ## Frontend
 
-Svelte 5 + SvelteKit + TypeScript (strict) + Tailwind + shadcn-svelte. Use `$lib/...` imports, Svelte 5 runes (`$props`, `$derived`), `+page.ts` loaders fetching the API at runtime. `AGENTS.md` documents the Svelte MCP tool workflow (list-sections → get-documentation; run svelte-autofixer on written Svelte code) and shadcn-svelte usage.
+Svelte 5 + SvelteKit + TypeScript (strict) + Tailwind + shadcn-svelte. Use `#lib/...` imports with file extensions (`#lib/types.js`; SvelteKit 3 replaced `$lib`), Svelte 5 runes (`$props`, `$derived`), `+page.ts` loaders fetching the API at runtime. `AGENTS.md` documents the Svelte MCP tool workflow (list-sections → get-documentation; run svelte-autofixer on written Svelte code) and shadcn-svelte usage.
 
 Auth is `better-auth` (email/password; Kysely + `pg` against `MUCKRAKE_DATABASE_URL`, which therefore **must be a Postgres URL** for the frontend to serve any page; the SQLite default isn't enough): routes on `/auth/*` (kept off `/api/*` to avoid the proxy), login at `/login`, admin panel at `/admin` with role-based `user`/`admin`, protected example at `/account`. `BETTER_AUTH_SECRET`/`BETTER_AUTH_URL` required in production (dev falls back to a fixed local secret).
 

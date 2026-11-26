@@ -22,8 +22,6 @@ export default defineConfig(({ mode }) => {
 		plugins: [
 			sveltekit({
 				adapter: adapter(),
-				// SvelteKit 3 replaced $lib with #lib; this keeps the existing $lib imports.
-				alias: { $lib: 'src/lib' },
 				extensions: ['.svelte', '.svx'],
 				preprocess: [vitePreprocess(), mdsvex(mdsvexConfig)]
 			})

@@ -4,7 +4,7 @@ description: OpenLobbying is an initiative to collect, standardise and match lob
 ---
 
 <script>
-	import ResponsiveEmbed from '$lib/components/ResponsiveEmbed.svelte';
+	import ResponsiveEmbed from '#lib/components/ResponsiveEmbed.svelte';
 </script>
 
 <ResponsiveEmbed src="https://www.youtube.com/embed/rU983OXuVUU" title="OpenLobbying video" />

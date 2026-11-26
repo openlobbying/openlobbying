@@ -1,6 +1,6 @@
 <script lang="ts">
-    import Dataset from "$lib/components/Dataset.svelte";
-	import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '$lib/components/ui/card';
+    import Dataset from "#lib/components/Dataset.svelte";
+	import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '#lib/components/ui/card/index.js';
 
     let { data } = $props();
     let datasets = $derived(data.datasets);

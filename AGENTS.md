@@ -28,11 +28,13 @@ These instructions apply when the Svelte MCP server is configured in your agent 
 - FtM entity properties are typed `Record<string, any[]>`, because property values vary by schema. Elsewhere, use specific types instead of `any`.
 
 ### Imports
-- Use SvelteKit's `$lib` path alias for library imports
+- Import from `src/lib` with the `#lib` subpath import (`package.json` `imports`), which SvelteKit 3 uses in place of `$lib`
+- Write the file extension: `.js` for a TypeScript module, and `/index.js` for a directory
 - Example:
   ```typescript
-  import Properties from "$lib/components/Properties.svelte";
-  import type { Entity } from "$lib/types";
+  import Properties from "#lib/components/Properties.svelte";
+  import type { Entity } from "#lib/types.js";
+  import { Button } from "#lib/components/ui/button/index.js";
   ```
 
 ### Svelte 5 runes

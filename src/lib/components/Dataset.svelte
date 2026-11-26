@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '$lib/components/ui/card';
-	import type { DatasetMetadata } from '$lib/types';
+	import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '#lib/components/ui/card/index.js';
+	import type { DatasetMetadata } from '#lib/types.js';
 
 	let { dataset }: { dataset: DatasetMetadata } = $props();
 </script>

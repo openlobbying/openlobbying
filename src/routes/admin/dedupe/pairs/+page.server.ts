@@ -1,7 +1,7 @@
 import { fail } from '@sveltejs/kit';
-import { getAdminApiHeaders, getOpenLobbyingApiBaseUrl, requireAdmin } from '$lib/server/admin';
-import { getAdminErrorMessage, requireDedupeUser } from '$lib/server/admin-dedupe';
-import type { DedupeCandidate } from '$lib/types';
+import { getAdminApiHeaders, getOpenLobbyingApiBaseUrl, requireAdmin } from '#lib/server/admin.js';
+import { getAdminErrorMessage, requireDedupeUser } from '#lib/server/admin-dedupe.js';
+import type { DedupeCandidate } from '#lib/types.js';
 import type { Actions, PageServerLoad } from './$types';
 
 interface DedupeCandidateResponse {

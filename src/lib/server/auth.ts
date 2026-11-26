@@ -1,7 +1,7 @@
 import { dev } from '$app/env';
 import { getRequestEvent } from '$app/server';
 import * as privateEnv from '$app/env/private';
-import { ADMIN_ROLE } from '$lib/auth-roles';
+import { ADMIN_ROLE } from '#lib/auth-roles.js';
 import { betterAuth } from 'better-auth';
 import { getMigrations } from 'better-auth/db/migration';
 import { admin } from 'better-auth/plugins';

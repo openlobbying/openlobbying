@@ -1,6 +1,6 @@
 import { error } from '@sveltejs/kit';
-import { getOpenLobbyingApiBaseUrl } from '$lib/server/muckrake-api';
-import type { HomeStats, ProfileSitemapResponse } from '$lib/types';
+import { getOpenLobbyingApiBaseUrl } from '#lib/server/muckrake-api.js';
+import type { HomeStats, ProfileSitemapResponse } from '#lib/types.js';
 
 export const PROFILE_SITEMAP_LIMIT = 50000;
 

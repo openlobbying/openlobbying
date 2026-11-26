@@ -1,7 +1,7 @@
 import { fail } from '@sveltejs/kit';
-import { ADMIN_ROLE, isAdminRole } from '$lib/auth-roles';
-import { auth } from '$lib/server/auth';
-import { requireAdmin } from '$lib/server/admin';
+import { ADMIN_ROLE, isAdminRole } from '#lib/auth-roles.js';
+import { auth } from '#lib/server/auth.js';
+import { requireAdmin } from '#lib/server/admin.js';
 import type { Actions, PageServerLoad } from './$types';
 
 type AdminRole = 'admin' | 'user';

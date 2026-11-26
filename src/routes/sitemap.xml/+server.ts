@@ -5,7 +5,7 @@ import {
 	getAbsoluteUrl,
 	getActorCount,
 	renderSitemapIndex
-} from '$lib/server/sitemap';
+} from '#lib/server/sitemap.js';
 
 export const GET: RequestHandler = async ({ url }) => {
 	const locations = [getAbsoluteUrl(url.origin, '/sitemaps/static.xml')];

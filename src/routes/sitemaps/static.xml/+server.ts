@@ -4,7 +4,7 @@ import {
 	XML_HEADERS,
 	getAbsoluteUrl,
 	renderUrlSet
-} from '$lib/server/sitemap';
+} from '#lib/server/sitemap.js';
 
 export const GET: RequestHandler = async ({ url }) => {
 	const locations = STATIC_SITEMAP_PATHS.map((path) => getAbsoluteUrl(url.origin, path));

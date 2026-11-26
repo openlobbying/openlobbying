@@ -1,7 +1,7 @@
 <script lang="ts">
-	import DatasetList from '$lib/components/DatasetList.svelte';
-	import { getPropertyLabel, getTimelineDetailRows } from '$lib/presentation/property-profile';
-	import { formatLabel, renderableValue, type DetailRow } from '$lib/util/detail';
+	import DatasetList from '#lib/components/DatasetList.svelte';
+	import { getPropertyLabel, getTimelineDetailRows } from '#lib/presentation/property-profile.js';
+	import { formatLabel, renderableValue, type DetailRow } from '#lib/util/detail.js';
 
 	interface Props {
 		activity: any;

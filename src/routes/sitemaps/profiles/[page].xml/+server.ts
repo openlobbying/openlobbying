@@ -5,7 +5,7 @@ import {
 	getAbsoluteUrl,
 	getProfileSitemapPage,
 	renderUrlSet
-} from '$lib/server/sitemap';
+} from '#lib/server/sitemap.js';
 
 export const GET: RequestHandler = async ({ params, url }) => {
 	const page = Number.parseInt(params.page, 10);

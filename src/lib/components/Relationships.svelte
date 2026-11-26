@@ -1,9 +1,9 @@
 <script lang="ts">
 	import { ChevronRight } from "@lucide/svelte";
-	import { getEntityRoute } from "$lib/util/routes";
-	import { relationshipIcons } from "$lib/util/entities";
-	import { Card, CardContent, CardHeader, CardTitle } from '$lib/components/ui/card';
-	import { Badge } from '$lib/components/ui/badge';
+	import { getEntityRoute } from "#lib/util/routes.js";
+	import { relationshipIcons } from "#lib/util/entities.js";
+	import { Card, CardContent, CardHeader, CardTitle } from '#lib/components/ui/card/index.js';
+	import { Badge } from '#lib/components/ui/badge/index.js';
 
 	let { relationships = [] } = $props();
 

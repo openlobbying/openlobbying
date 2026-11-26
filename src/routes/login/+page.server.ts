@@ -1,5 +1,5 @@
 import { redirect } from '@sveltejs/kit';
-import { localRedirectTarget } from '$lib/util/redirect';
+import { localRedirectTarget } from '#lib/util/redirect.js';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ locals, url }) => {

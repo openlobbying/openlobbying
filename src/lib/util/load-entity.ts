@@ -1,5 +1,5 @@
 import { error, redirect } from '@sveltejs/kit';
-import type { Entity } from '$lib/types';
+import type { Entity } from '#lib/types.js';
 
 type RoutedEntity = Entity & { redirect?: boolean; correct_route?: string };
 
