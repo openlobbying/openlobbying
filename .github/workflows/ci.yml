@@ -75,6 +75,9 @@ jobs:
       - name: Type check
         run: npm run check
 
+      - name: Test
+        run: npm test
+
       # The auth module requires these at import time; the build never connects.
       - name: Build
         run: npm run build
