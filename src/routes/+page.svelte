@@ -1,15 +1,15 @@
 <script lang="ts">
-	import type { HomeStats } from '$lib/types';
-	import { Button } from '$lib/components/ui/button';
+	import type { HomeStats } from '#lib/types.js';
+	import { Button } from '#lib/components/ui/button/index.js';
 	import {
 		Card,
 		CardContent,
 		CardDescription,
 		CardHeader,
 		CardTitle
-	} from '$lib/components/ui/card';
-	import * as Table from '$lib/components/ui/table/index.js';
-	import { Input } from '$lib/components/ui/input';
+	} from '#lib/components/ui/card/index.js';
+	import * as Table from '#lib/components/ui/table/index.js';
+	import { Input } from '#lib/components/ui/input/index.js';
 
 	interface HomePageData {
 		stats: HomeStats;

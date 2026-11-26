@@ -1,6 +1,6 @@
 import type { PageLoad } from './$types';
 import { error } from '@sveltejs/kit';
-import type { SearchResponse } from '$lib/types';
+import type { SearchResponse } from '#lib/types.js';
 
 const DEFAULT_LIMIT = 20;
 const ALLOWED_TYPES = ['Person', 'Company', 'Organization', 'PublicBody'] as const;

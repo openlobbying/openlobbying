@@ -1,9 +1,9 @@
 <script lang="ts">
 	import TimelineItem from './TimelineItem.svelte';
 	import { allTypes } from './registry';
-	import { Card, CardContent, CardHeader, CardTitle } from '$lib/components/ui/card';
-	import { Button } from '$lib/components/ui/button';
-	import type { TimelineItem as TimelineActivity } from '$lib/types';
+	import { Card, CardContent, CardHeader, CardTitle } from '#lib/components/ui/card/index.js';
+	import { Button } from '#lib/components/ui/button/index.js';
+	import type { TimelineItem as TimelineActivity } from '#lib/types.js';
 
 	interface Props {
 		activities: TimelineActivity[];

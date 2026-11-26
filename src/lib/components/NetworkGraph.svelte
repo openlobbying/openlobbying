@@ -4,14 +4,14 @@
     import { Network } from "vis-network";
     import { DataSet } from "vis-data";
     import type { Edge, Node } from "vis-network";
-    import type { Entity, GraphData } from "$lib/types";
+    import type { Entity, GraphData } from "#lib/types.js";
 	import {
 		NETWORK_OPTIONS,
 		EDGE_DEFAULT_CONFIG,
-	} from "$lib/util/graph_config";
+	} from "#lib/util/graph_config.js";
 
-	import { getIconUrl } from "$lib/util/entities";
-	import { Skeleton } from '$lib/components/ui/skeleton/index.js';
+	import { getIconUrl } from "#lib/util/entities.js";
+	import { Skeleton } from '#lib/components/ui/skeleton/index.js';
 
     let { entity }: { entity: Entity } = $props();
 

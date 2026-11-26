@@ -1,5 +1,5 @@
 import type { PageLoad } from './$types';
-import { loadEntity } from '$lib/util/load-entity';
+import { loadEntity } from '#lib/util/load-entity.js';
 
 export const load: PageLoad = async ({ params, fetch }) => {
 	return {

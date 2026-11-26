@@ -1,7 +1,7 @@
 <script lang="ts">
-	import { getEntityAssets } from "$lib/util/entities";
-	import { Card, CardContent } from '$lib/components/ui/card';
-	import { Badge } from '$lib/components/ui/badge';
+	import { getEntityAssets } from "#lib/util/entities.js";
+	import { Card, CardContent } from '#lib/components/ui/card/index.js';
+	import { Badge } from '#lib/components/ui/badge/index.js';
 
 	let { entity } = $props();
 

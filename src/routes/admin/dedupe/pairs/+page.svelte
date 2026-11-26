@@ -1,12 +1,12 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
-	import AdminFlash from '$lib/components/admin/AdminFlash.svelte';
-	import DedupeEntityCard from '$lib/components/admin/dedupe/DedupeEntityCard.svelte';
-	import { formatLockExpiry } from '$lib/components/admin/dedupe/utils';
-	import { Badge } from '$lib/components/ui/badge';
-	import { Button } from '$lib/components/ui/button';
-	import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '$lib/components/ui/card';
-	import type { DedupeCandidate } from '$lib/types';
+	import AdminFlash from '#lib/components/admin/AdminFlash.svelte';
+	import DedupeEntityCard from '#lib/components/admin/dedupe/DedupeEntityCard.svelte';
+	import { formatLockExpiry } from '#lib/components/admin/dedupe/utils.js';
+	import { Badge } from '#lib/components/ui/badge/index.js';
+	import { Button } from '#lib/components/ui/button/index.js';
+	import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '#lib/components/ui/card/index.js';
+	import type { DedupeCandidate } from '#lib/types.js';
 
 	interface DedupePageData {
 		candidate: DedupeCandidate | null;

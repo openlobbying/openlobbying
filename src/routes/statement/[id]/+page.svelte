@@ -1,9 +1,9 @@
 <script lang="ts">
-	import DatasetList from '$lib/components/DatasetList.svelte';
-	import Properties from '$lib/components/Properties.svelte';
-	import { Card, CardContent, CardHeader, CardTitle } from '$lib/components/ui/card';
-	import { Badge } from '$lib/components/ui/badge';
-	import { getStatementPropertyOrder } from '$lib/presentation/property-profile';
+	import DatasetList from '#lib/components/DatasetList.svelte';
+	import Properties from '#lib/components/Properties.svelte';
+	import { Card, CardContent, CardHeader, CardTitle } from '#lib/components/ui/card/index.js';
+	import { Badge } from '#lib/components/ui/badge/index.js';
+	import { getStatementPropertyOrder } from '#lib/presentation/property-profile.js';
 
 	let { data } = $props();
 	let entity = $derived(data.entity);

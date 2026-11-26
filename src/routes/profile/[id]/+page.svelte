@@ -1,21 +1,21 @@
 <script lang="ts">
-	import ProfileBox from "$lib/components/ProfileBox.svelte";
-	import DatasetList from '$lib/components/DatasetList.svelte';
-	import KeyDetails from "$lib/components/KeyDetails.svelte";
-	import Relationships from "$lib/components/Relationships.svelte";
-	import Timeline from "$lib/components/timeline/Timeline.svelte";
-	import { Button } from '$lib/components/ui/button';
-	import { Card, CardContent, CardHeader, CardTitle } from '$lib/components/ui/card';
-	import { Skeleton } from '$lib/components/ui/skeleton/index.js';
+	import ProfileBox from "#lib/components/ProfileBox.svelte";
+	import DatasetList from '#lib/components/DatasetList.svelte';
+	import KeyDetails from "#lib/components/KeyDetails.svelte";
+	import Relationships from "#lib/components/Relationships.svelte";
+	import Timeline from "#lib/components/timeline/Timeline.svelte";
+	import { Button } from '#lib/components/ui/button/index.js';
+	import { Card, CardContent, CardHeader, CardTitle } from '#lib/components/ui/card/index.js';
+	import { Skeleton } from '#lib/components/ui/skeleton/index.js';
 	import { TextAlignJustify, Waypoints } from '@lucide/svelte';
-	import type { Entity, ProfileActivitiesResponse } from '$lib/types';
+	import type { Entity, ProfileActivitiesResponse } from '#lib/types.js';
 	import type { PageData } from './$types';
 	import type { Component } from 'svelte';
 	import {
 		transformActivities,
 		transformActivityEntities,
 		transformRelationships,
-	} from "$lib/util/transformers";
+	} from "#lib/util/transformers.js";
 
 	type ProfileTab = 'timeline' | 'network';
 
@@ -116,7 +116,7 @@
 		networkComponentLoading = true;
 		networkComponentError = null;
 		try {
-			const module = await import('$lib/components/NetworkGraph.svelte');
+			const module = await import('#lib/components/NetworkGraph.svelte');
 			NetworkGraphComponent = module.default;
 		} catch (error) {
 			networkComponentError = error instanceof Error

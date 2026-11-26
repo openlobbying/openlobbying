@@ -1,11 +1,11 @@
 <script lang="ts">
 	import { ChevronDown, ExternalLink, Users, PencilLine } from "@lucide/svelte";
-	import { getEntityRoute } from "$lib/util/routes";
+	import { getEntityRoute } from "#lib/util/routes.js";
 	import { getTypeInfo } from "./registry";
-	import { formatQuarterRange, formatFullDate, formatDateRange } from "$lib/util/dates";
+	import { formatQuarterRange, formatFullDate, formatDateRange } from "#lib/util/dates.js";
 	import TimelineDetails from './TimelineDetails.svelte';
-	import { getPropertyLabel, getTimelinePrimaryRows } from '$lib/presentation/property-profile';
-import { formatLabel, isEntity, renderableValue, type DetailRow } from '$lib/util/detail';
+	import { getPropertyLabel, getTimelinePrimaryRows } from '#lib/presentation/property-profile.js';
+import { formatLabel, isEntity, renderableValue, type DetailRow } from '#lib/util/detail.js';
 
 	interface Props {
 		activity: any;

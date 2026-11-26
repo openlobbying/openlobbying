@@ -1,7 +1,7 @@
 import { redirect, error } from '@sveltejs/kit';
-import { isAdminUser } from '$lib/auth-roles';
-import { getAdminApiSecret } from '$lib/server/auth';
-import { getOpenLobbyingApiBaseUrl } from '$lib/server/muckrake-api';
+import { isAdminUser } from '#lib/auth-roles.js';
+import { getAdminApiSecret } from '#lib/server/auth.js';
+import { getOpenLobbyingApiBaseUrl } from '#lib/server/muckrake-api.js';
 
 export { getOpenLobbyingApiBaseUrl };
 

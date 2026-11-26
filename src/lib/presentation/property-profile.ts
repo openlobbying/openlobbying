@@ -2,7 +2,7 @@ import {
 	buildRemainingRows,
 	buildRowsForKeys,
 	type DetailRow
-} from '$lib/util/detail';
+} from '#lib/util/detail.js';
 
 interface PropertyProfile {
 	primaryKeys: string[];

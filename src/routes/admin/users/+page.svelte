@@ -1,9 +1,9 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
-	import AdminFlash from '$lib/components/admin/AdminFlash.svelte';
-	import { Button } from '$lib/components/ui/button';
-	import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '$lib/components/ui/card';
-	import { Input } from '$lib/components/ui/input';
+	import AdminFlash from '#lib/components/admin/AdminFlash.svelte';
+	import { Button } from '#lib/components/ui/button/index.js';
+	import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '#lib/components/ui/card/index.js';
+	import { Input } from '#lib/components/ui/input/index.js';
 	import {
 		Table,
 		TableBody,
@@ -11,7 +11,7 @@
 		TableHead,
 		TableHeader,
 		TableRow
-	} from '$lib/components/ui/table';
+	} from '#lib/components/ui/table/index.js';
 
 	interface AdminUser {
 		id: string;
