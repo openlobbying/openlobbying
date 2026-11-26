@@ -1,0 +1,4 @@
+# Dockerfile.pipeline only needs pyproject.toml and uv.lock.
+*
+!pyproject.toml
+!uv.lock
