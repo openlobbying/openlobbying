@@ -39,7 +39,14 @@ uv run --with-editable ../muckrake muckrake crawl gb_prca
 
 Edits in `../muckrake` apply on the next command. `pyproject.toml` and `uv.lock` don't change, so there is nothing to undo: a plain `uv run` uses the pinned release again. An alias saves typing, for example `alias uvf='uv run --with-editable ../muckrake'`. `uv sync` and your editor's interpreter still see the pinned release.
 
-The umbrella stack's Docker runner (`docker compose run --rm muckrake` in undertheinfluence) is still built from `../muckrake`, so it runs your local muckrake. Moving it to the pinned release is [Build the umbrella pipeline runner from openlobbying's lock (pinned muckrake)](https://github.com/openlobbying/undertheinfluence/issues/11).
+The umbrella stack in undertheinfluence has a runner for each mode:
+
+```sh
+docker compose run --build --rm openlobbying <command>   # project development: the pinned release
+docker compose run --build --rm muckrake <command>       # framework development: your local ../muckrake
+```
+
+`openlobbying` is built from this repo's `Dockerfile.pipeline`, which installs `uv.lock`. `muckrake` is built from `../muckrake`. `--build` picks up a changed lock or changed muckrake source, and is quick when nothing changed.
 
 ### Releasing a change that spans both repos
 
@@ -76,7 +83,7 @@ To move an existing checkout:
 2. Run `uv sync`. It replaces the editable muckrake with the pinned release.
 3. For framework development, run commands with `uv run --with-editable ../muckrake`.
 
-Not changed yet: the umbrella stack's runner (see [Framework and project development](#framework-and-project-development)), and `ops/deploy_to_vps.sh`, which still copies `../muckrake` to the server. The current production site is frozen, so the script is left as it is.
+Real pipeline runs in the umbrella stack move from the `muckrake` service to the new `openlobbying` service ([Build the umbrella pipeline runner from openlobbying's lock (pinned muckrake)](https://github.com/openlobbying/undertheinfluence/issues/11)). Not changed: `ops/deploy_to_vps.sh`, which still copies `../muckrake` to the server. The current production site is frozen, so the script is left as it is.
 
 ## In this repo
 
